@@ -37,11 +37,15 @@ Orientations in ]-90°, 90°] with a 1° step.
 
 `python` on this machine may point to Python 2.7 (Amesim). Use Python 3.12:
 
+The virtual environment lives at the repository root (`.venv/`, ignored by
+git); the code lives in this folder. From the repository root:
+
 ```bash
 py -3.12 -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt
-.venv/Scripts/python -m pytest
-.venv/Scripts/python main.py
+.venv/Scripts/python -m pip install -r "Claude Momon's/requirements.txt"
+cd "Claude Momon's"
+../.venv/Scripts/python -m pytest
+../.venv/Scripts/python main.py
 ```
 
 Outputs (in `results/`, not versioned):
