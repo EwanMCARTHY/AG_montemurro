@@ -28,10 +28,10 @@ Orientations in ]-90°, 90°] with a 1° step.
 | `laminate.py` | ply compliance S and stiffness Q, rotation, A, B, D, A\*, B\*, D\*, C (Cartesian route) |
 | `polar.py` | polar parameters T0, T1, R0, R1, Φ0, Φ1, norm, direct polar sums (slides 41-42) |
 | `fitness.py` | partial objectives Φ1-Φ11, cost function, fitness of the statement |
-| `ga.py` | binary-coded GA: initial population, roulette selection, crossover, mutation, elitism |
-| `plots.py` | convergence curve and polar diagrams (PNG) |
+| `ga.py` | binary-coded GA (8 bits per ply, invalid codes rejected): initial population, roulette selection, crossover, mutation per gene, elitism |
+| `plots.py` | convergence curve and polar diagrams of Q, A\*, B\*, D\* (SVG + PDF + PNG) |
 | `main.py` | runs the optimisation and writes everything to `results/` |
-| `tests/` | mechanical checks against the course values |
+| `tests/` | checks against the course values (mechanics, cost) and of the GA operators |
 
 ## Usage
 
@@ -50,6 +50,17 @@ cd "Claude Momon's"
 
 Outputs (in `results/`, not versioned):
 
-- `ga_statistics.csv`: population statistics per generation (`;` separator, UTF-8 with BOM)
+- `ga_statistics.csv`: per generation, min / mean / median / max / std of the cost,
+  number of rejected genes and best stacking (`;` separator, UTF-8 with BOM)
 - `best_laminate.txt`: best stacking sequence and its polar parameters
-- `convergence.png`, `polar_diagrams.png`
+- `convergence.svg/.pdf/.png`, `polar_diagrams.svg/.pdf/.png`
+
+Options: `--crossover two_point`, `--seed 3`.
+
+## Decisions
+
+- Phi1 uses the slide 45 formula with B\* = 2B/h^2. The value printed on P2
+  slide 51 (3.5873e-6) is exactly n^2 = 36 times ours (9.9648e-8): treated as a
+  numerical slip on the slide (see `tests/test_fitness.py`).
+- "R1-orthotropy in bending" is read as R1(D\*) = 0, i.e. Phi9.
+- The 76 codes without an angle are handled by rejection (see `ga.py`).
