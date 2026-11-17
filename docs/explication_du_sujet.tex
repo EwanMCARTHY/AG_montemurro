@@ -101,10 +101,68 @@ Un matériau dont les propriétés dépendent de la direction est dit
 privilégiées perpendiculaires (fibres et travers), il est
 \textbf{orthotrope}.
 
-\subsection{L'orientation d'un pli}
-Chaque pli est posé avec ses fibres tournées d'un angle $\delta$ par rapport
-à l'axe $x$ de la plaque : $\delta = 0^\circ$, fibres selon $x$ ;
-$\delta = 90^\circ$, fibres selon $y$ ; $\delta = 45^\circ$, en diagonale.
+\subsection{L'orientation d'un pli : les directions 1, 2 et \texorpdfstring{$x$, $y$, $z$}{x, y, z}}
+On utilise \textbf{deux repères} différents, et il ne faut pas les
+confondre :
+\begin{itemize}
+  \item le repère \textbf{de la plaque} $(x, y, z)$ : fixe, le même pour tous
+        les plis. $x$ et $y$ sont dans le plan de la plaque, $z$ est dans
+        l'épaisseur (vers le haut) ;
+  \item le repère \textbf{du pli} $(1, 2)$ : propre à chaque pli, il tourne
+        avec lui. \textbf{1 = direction des fibres}, \textbf{2 = direction
+        perpendiculaire aux fibres}, dans le plan.
+\end{itemize}
+L'angle $\delta$ d'un pli est l'angle entre l'axe $x$ de la plaque et ses
+fibres (l'axe 1), compté dans le sens trigonométrique :
+
+\begin{center}
+\begin{tikzpicture}[>={Stealth[length=2.6mm]},scale=1.0]
+  % --- Left: plate frame and one ply rotated by delta ---
+  \begin{scope}
+    % ply (square) with fibres rotated by 30 deg
+    \fill[blue!5] (-2,-2) rectangle (2,2);
+    \draw[gray] (-2,-2) rectangle (2,2);
+    \begin{scope}
+      \clip (-2,-2) rectangle (2,2);
+      \foreach \k in {-6,...,6}
+        \draw[blue!35,thin,rotate=30] (-4,\k*0.35) -- (4,\k*0.35);
+    \end{scope}
+    % plate axes x, y
+    \draw[->,thick] (0,0) -- (2.7,0) node[right] {$x$ (plaque)};
+    \draw[->,thick] (0,0) -- (0,2.7) node[above] {$y$ (plaque)};
+    % ply axes 1, 2
+    \draw[->,very thick,red!75!black] (0,0) -- (30:2.4) node[above right] {1 (fibres)};
+    \draw[->,very thick,red!75!black] (0,0) -- (120:2.2) node[above left] {2 ($\perp$ fibres)};
+    % angle delta
+    \draw[->] (0.9,0) arc (0:30:0.9);
+    \node at (15:1.25) {$\delta$};
+    \node[below,align=center,font=\small] at (0,-2.15) {Vue de dessus d'un pli : repère de la\\plaque $(x,y)$ et repère du pli $(1,2)$};
+  \end{scope}
+  % --- Right: examples of delta ---
+  \begin{scope}[xshift=7.2cm,yshift=0.6cm]
+    \foreach \a/\y in {0/1.4,90/0,45/-1.4}{
+      \fill[blue!5] (-0.7,\y-0.5) rectangle (0.7,\y+0.5);
+      \draw[gray] (-0.7,\y-0.5) rectangle (0.7,\y+0.5);
+      \begin{scope}
+        \clip (-0.7,\y-0.5) rectangle (0.7,\y+0.5);
+        \foreach \k in {-4,...,4}
+          \draw[blue!45,shift={(0,\y)},rotate=\a] (-1.5,\k*0.22) -- (1.5,\k*0.22);
+      \end{scope}
+      \node[right,font=\small] at (0.9,\y) {$\delta = \a^\circ$};
+    }
+    \node[right,font=\small] at (2.2,1.4) {fibres selon $x$};
+    \node[right,font=\small] at (2.2,0) {fibres selon $y$};
+    \node[right,font=\small] at (2.2,-1.4) {fibres en diagonale};
+    \draw[->] (-1.1,-2.25) -- (-0.4,-2.25) node[right,font=\small] {$x$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+Les constantes du pli ($E_1$, $E_2$, $G_{12}$, $\nu_{12}$) sont données
+\textbf{dans le repère du pli} $(1,2)$. Les rigidités de la plaque
+($\mathbf{A}$, $\mathbf{B}$, $\mathbf{D}$) sont écrites \textbf{dans le
+repère de la plaque} $(x,y)$. Passer de l'un à l'autre, c'est
+\og tourner le pli de $\delta$\fg{} (section 3.3).
 
 Pourquoi l'intervalle $]-90^\circ, 90^\circ]$ ? Une fibre n'a pas de sens :
 une fibre à $100^\circ$ est la même qu'une fibre à $-80^\circ$. Au pas de
@@ -163,6 +221,32 @@ axes du pli). On veut plutôt \og contrainte = $\Q$ $\times$ déformation\fg :
 \qquad\text{(matrice de rigidité réduite du pli, l'objet central du projet)}
 \]
 
+\begin{idee}[Les indices 1, 2, 6 des matrices]
+Les cases d'une matrice $3\times3$ comme $\Q$ sont numérotées avec la
+\og notation de Voigt\fg{} : l'indice \textbf{1} correspond à la direction
+11 (traction selon 1), \textbf{2} à la direction 22 (traction selon 2) et
+\textbf{6} au cisaillement 12. Ainsi :
+\[
+\Q =
+\begin{bmatrix}
+Q_{11} & Q_{12} & Q_{16}\\
+Q_{12} & Q_{22} & Q_{26}\\
+Q_{16} & Q_{26} & Q_{66}
+\end{bmatrix}
+\qquad
+\begin{array}{l}
+Q_{11} : \text{rigidité en traction selon 1}\\
+Q_{22} : \text{rigidité en traction selon 2}\\
+Q_{66} : \text{rigidité en cisaillement}\\
+Q_{12} : \text{effet Poisson (tirer selon 1 charge selon 2)}\\
+Q_{16}, Q_{26} : \text{couplage traction / cisaillement}
+\end{array}
+\]
+Dans les axes du pli, $Q_{16} = Q_{26} = 0$ (orthotropie). Ils deviennent
+non nuls dès qu'on tourne le pli : tirer en biais sur des fibres les fait
+\og glisser\fg.
+\end{idee}
+
 \subsection{Tourner un pli : \texorpdfstring{$\Q(\delta)$}{Q(delta)}}
 \emph{Fonction \code{rotate\_stiffness} (P2 slide 27).}
 
@@ -188,6 +272,60 @@ Une plaque peut être sollicitée de deux façons :
   \item \textbf{en flexion} : on la plie (une règle qu'on courbe). Moments
         $\mathbf{M}$, courbures $\boldsymbol{\chi}$.
 \end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[>={Stealth[length=2.4mm]}]
+  % ---------------- (a) Membrane ----------------
+  \begin{scope}
+    % plate before (dashed) and after stretching
+    \draw[dashed,gray] (0.3,0) rectangle (3.7,0.3);
+    \fill[blue!12] (0,0) rectangle (4,0.3);
+    \draw (0,0) rectangle (4,0.3);
+    \draw[dashed,red!60!black] (0,0.15) -- (4,0.15);
+    % forces N
+    \draw[->,very thick] (0,0.15) -- (-0.9,0.15) node[left] {$\mathbf{N}$};
+    \draw[->,very thick] (4,0.15) -- (4.9,0.15) node[right] {$\mathbf{N}$};
+    \node[align=center,font=\small] at (2,-0.75)
+      {(a) \textbf{Membrane} : on tire dans le plan,\\la plaque s'allonge et reste plate\\(rigidité $\mathbf{A}$, déformation $\boldsymbol{\varepsilon}_0$)};
+  \end{scope}
+  % ---------------- (b) Flexion ----------------
+  \begin{scope}[xshift=9.6cm]
+    % bent plate: band between two concentric arcs
+    \fill[blue!12] (-1.9,0.55) arc[start angle=118,end angle=62,radius=4.0]
+                  -- ++(0,0) -- (1.75,0.25) arc[start angle=62,end angle=118,radius=3.7] -- cycle;
+    \draw (-1.9,0.55) arc[start angle=118,end angle=62,radius=4.0];
+    \draw (-1.73,0.25) arc[start angle=118,end angle=62,radius=3.7];
+    \draw (-1.9,0.55) -- (-1.73,0.25);
+    \draw (1.9,0.55) -- (1.73,0.25);
+    % moments M (curved arrows at both ends)
+    \draw[->,very thick] (-2.15,-0.1) arc[start angle=220,end angle=110,radius=0.45];
+    \node[left] at (-2.55,0.45) {$\mathbf{M}$};
+    \draw[->,very thick] (2.15,-0.1) arc[start angle=-40,end angle=70,radius=0.45];
+    \node[right] at (2.55,0.45) {$\mathbf{M}$};
+    \node[align=center,font=\small] at (0,-0.75)
+      {(b) \textbf{Flexion} : on plie la plaque,\\elle se courbe\\(rigidité $\mathbf{D}$, courbure $\boldsymbol{\chi}$)};
+  \end{scope}
+\end{tikzpicture}
+
+\vspace{0.6em}
+\begin{tikzpicture}[>={Stealth[length=2.4mm]}]
+  % ---------------- (c) Coupling ----------------
+  \fill[orange!15] (-1.9,0.55) arc[start angle=118,end angle=62,radius=4.0]
+                -- (1.73,0.25) arc[start angle=62,end angle=118,radius=3.7] -- cycle;
+  \draw (-1.9,0.55) arc[start angle=118,end angle=62,radius=4.0];
+  \draw (-1.73,0.25) arc[start angle=118,end angle=62,radius=3.7];
+  \draw (-1.9,0.55) -- (-1.73,0.25);
+  \draw (1.9,0.55) -- (1.73,0.25);
+  \draw[->,very thick] (-1.82,0.4) -- (-2.8,0.15) node[left] {$\mathbf{N}$};
+  \draw[->,very thick] (1.82,0.4) -- (2.8,0.15) node[right] {$\mathbf{N}$};
+  \node[align=center,font=\small] at (0,-0.6)
+    {(c) \textbf{Couplage} ($\mathbf{B}\neq0$) : on ne fait que tirer\ldots{} et pourtant la plaque se courbe.\\
+     C'est ce qu'on veut supprimer avec l'objectif $\Phi_1$ ($\Bs = 0$).};
+\end{tikzpicture}
+\end{center}
+Les dessins sont des vues de côté (la plaque est vue sur la tranche,
+l'épaisseur est très exagérée). La ligne pointillée rouge en (a) est le
+\textbf{plan moyen}, à mi-épaisseur ($z = 0$).
 La Théorie Classique des Stratifiés relie tout ça :
 \[
 \mathbf{N} = \mathbf{A}\,\boldsymbol{\varepsilon}_0 + \mathbf{B}\,\boldsymbol{\chi},
@@ -262,7 +400,34 @@ on tourne les axes}. Difficile de répondre à \og cette plaque est-elle
 isotrope ?\fg{} en regardant juste les composantes.
 
 \subsection{Les six paramètres polaires}
-On réécrit le même tenseur avec six autres nombres, mieux choisis :
+
+\begin{idee}[Qui est \texorpdfstring{$\mathbf{L}$}{L} ?]
+Dans cette section, $\mathbf{L}$ n'est \textbf{pas une nouvelle matrice} :
+c'est un \textbf{nom générique} pour \og n'importe laquelle de nos matrices
+de rigidité\fg. La méthode polaire marche exactement de la même façon pour
+toutes : on peut remplacer $\mathbf{L}$ par
+\[
+\Q\ \text{(le pli)},\qquad \As\ \text{(membrane)},\qquad \Bs\ \text{(couplage)},
+\qquad \Ds\ \text{(flexion)},\qquad \Cm = \As - \Ds .
+\]
+Par exemple, avec $\mathbf{L} = \Q$, la formule de $T_0$ ci-dessous devient
+$8\,T_0 = Q_{11} - 2Q_{12} + 4Q_{66} + Q_{22}$. Avec $\mathbf{L} = \As$,
+elle donne le $T_0$ de la membrane, noté $T_0^{A^*}$, et ainsi de suite.
+C'est d'ailleurs ce que fait le code : une seule fonction,
+\code{polar\_parameters(L)}, est appelée cinq fois, une fois par matrice.
+
+Le cours écrit les composantes avec quatre indices ($L_{1111}$, $L_{1122}$,
+$L_{1212}$\ldots) parce qu'une rigidité est, en toute rigueur, un tenseur
+d'ordre 4. Ce sont les mêmes cases que celles de la matrice $3\times3$, avec
+la correspondance :
+\[
+L_{1111} = L_{11},\quad L_{2222} = L_{22},\quad L_{1122} = L_{12},\quad
+L_{1212} = L_{66},\quad L_{1112} = L_{16},\quad L_{2212} = L_{26}.
+\]
+\end{idee}
+
+On réécrit donc chacune de ces matrices avec six autres nombres, mieux
+choisis :
 \begin{center}
 \begin{tabularx}{\linewidth}{l l X}
 \toprule
@@ -274,8 +439,7 @@ $\Phi_0, \Phi_1$ & angles polaires & \textbf{dans quelle direction} sont les max
 \bottomrule
 \end{tabularx}
 \end{center}
-Formules (slide 36), avec $L_{1111}=L_{11}$, $L_{1122}=L_{12}$,
-$L_{1212}=L_{66}$, $L_{1112}=L_{16}$, $L_{2212}=L_{26}$ :
+Formules (slide 36), écrites avec les indices de la matrice $3\times3$ :
 \begin{align*}
 8\,T_0 &= L_{11} - 2L_{12} + 4L_{66} + L_{22}\\
 8\,T_1 &= L_{11} + 2L_{12} + L_{22}\\
@@ -312,7 +476,8 @@ Isotropie & $R_0 = R_1 = 0$ & cercle parfait\\
 \end{tabularx}
 \end{center}
 Le \textbf{diagramme polaire} trace la rigidité $L_{11}(\theta)$ dans chaque
-direction $\theta$ sur un graphique en rond. C'est ce que fait
+direction $\theta$ sur un graphique en rond : c'est la rigidité en traction
+quand on tire dans la direction $\theta$. C'est ce que fait
 \code{plots.py}.
 
 \subsection{Le stratifié en polaire : des sommes de flèches}
