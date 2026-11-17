@@ -56,7 +56,7 @@ COL_RESIN = "#c89b5a"   # epoxy resin
 # ':' active, which breaks some math).
 # ---------------------------------------------------------------------------
 TEMPLATE = TexTemplate()
-TEMPLATE.add_to_preamble(r"\usepackage{amssymb}")
+TEMPLATE.add_to_preamble(r"\usepackage{amssymb}\usepackage{lmodern}\usepackage[T1]{fontenc}")
 
 
 def tex(text, size=36, color=FG, **kw):
@@ -67,6 +67,11 @@ def tex(text, size=36, color=FG, **kw):
 def math(text, size=40, color=FG, **kw):
     """Display math."""
     return MathTex(text, tex_template=TEMPLATE, font_size=size, color=color, **kw)
+
+
+def math_parts(parts, size=40, color=FG, **kw):
+    """Display math split in several parts (math_parts(...)[i] is part i)."""
+    return MathTex(*parts, tex_template=TEMPLATE, font_size=size, color=color, **kw)
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +170,51 @@ def fibre_hatch(center, width, height, angle_deg, spacing=0.14, color=COL_FIBRE,
     return lines
 
 
+def l1111(pp, theta):
+    """
+    First component L_1111(theta) of a tensor given by its polar parameters
+    (P2 slide 35, frame rotated by theta, slide 37):
+        T0 + 2 T1 + R0 cos 4(Phi0 - theta) + 4 R1 cos 2(Phi1 - theta)
+    """
+    return (pp["T0"] + 2 * pp["T1"] + pp["R0"] * np.cos(4 * (pp["Phi0"] - theta))
+            + 4 * pp["R1"] * np.cos(2 * (pp["Phi1"] - theta)))
+
+
+def polar_curve(pp, center, scale, color, stroke=4, samples=361):
+    """Closed polar diagram |L_1111(theta)| * scale around `center`."""
+    from manim import VMobject
+    th = np.linspace(0, 2 * np.pi, samples)
+    r = np.abs(l1111(pp, th)) * scale
+    pts = np.stack([center[0] + r * np.cos(th), center[1] + r * np.sin(th), np.zeros_like(th)], 1)
+    curve = VMobject(color=color, stroke_width=stroke)
+    curve.set_points_smoothly(pts)
+    return curve
+
+
+def arrow_chain(angles_rad, weights=None, origin=(0, 0, 0), scale=1.0, colors=None,
+                stroke=5):
+    """
+    Arrows laid tip to tail: arrow k has length |w_k| * scale and direction
+    angles_rad[k] (a negative weight flips it). Returns (arrows, end point).
+    This is the picture of sum_k w_k e^(i angle_k).
+    """
+    from manim import Arrow as _Arrow
+    if weights is None:
+        weights = np.ones(len(angles_rad))
+    p = np.array(origin, dtype=float)
+    arrows = VGroup()
+    for k, (a, w) in enumerate(zip(angles_rad, weights)):
+        step = scale * w * np.array([np.cos(a), np.sin(a), 0.0])
+        col = colors[k % len(colors)] if colors else FG
+        if np.linalg.norm(step) > 1e-6:
+            arrows.add(_Arrow(p, p + step, buff=0, color=col, stroke_width=stroke,
+                              max_tip_length_to_length_ratio=0.18, max_stroke_width_to_length_ratio=8))
+        p = p + step
+    return arrows, p
+
+
 __all__ = [
+    "l1111", "polar_curve", "arrow_chain", "math_parts",
     "np", "config", "NarratedScene", "tex", "math", "fibre_hatch",
     "BG", "FG", "MUTED", "ACCENT", "COL_Q", "COL_A", "COL_B", "COL_D",
     "COL_FIBRE", "COL_RESIN", "UP", "DOWN", "LEFT", "RIGHT", "PROJECT_DIR",

@@ -7,17 +7,17 @@ Conventions : notation de `docs/explication_du_sujet.tex` (plis numérotés de 1
 | # | Scène | Durée |
 |---|---|---|
 | 1 | Accroche | 0:30 |
-| 2 | Le pli | 0:50 |
+| 2 | Le pli et les deux repères | 1:10 |
 | 3 | De S à Q | 0:35 |
-| 4 | A, B, D et les matrices étoilées | 0:55 |
-| 5 | La méthode polaire | 0:50 |
+| 4 | A, B, D et les matrices étoilées | 1:00 |
+| 5 | La méthode polaire | 1:00 |
 | 6 | Des flèches qui se referment | 1:10 |
 | 7 | Les objectifs du groupe 1 | 0:45 |
 | 8 | Deux décisions du groupe | 0:45 |
 | 9 | L'algorithme génétique | 1:25 |
 | 10 | Résultats | 1:05 |
 | 11 | Fin | 0:30 |
-| | Total | environ 9:30 |
+| | Total | environ 10:00 (à recaler sur la voix) |
 
 ---
 
@@ -28,37 +28,38 @@ Conventions : notation de `docs/explication_du_sujet.tex` (plis numérotés de 1
 Narration :
 > Une plaque de vingt couches de fibres de carbone. Pour chaque couche, on choisit une orientation parmi 180. Ça fait 180 puissance 20 empilements possibles, à peu près 10 puissance 45. On ne peut pas tous les essayer. Pourtant, dans ce projet, on en cherche un qui donne à la plaque un comportement bien précis. On va voir ce qu'on cherche, comment on le mesure, et comment un algorithme génétique le trouve.
 
-## Scène 2 : le pli (0:50)
+## Scène 2 : le pli et les deux repères (1:10)
 
-À l'écran : un pli en 3D légère (fibres noires parallèles dans une résine ambrée). Une flèche tire dans le sens des fibres, puis en travers : deux barres comparent $E_1 = 161\,000$ MPa et $E_2 = 9\,000$ MPa, avec un repère « acier : 210 000 MPa ». Ensuite le pli tourne d'un angle $\delta$ par rapport à l'axe $x$ ; une fibre à $100^\circ$ se superpose à une fibre à $-80^\circ$. L'intervalle $]-90^\circ, 90^\circ]$ s'affiche, avec « 180 valeurs au pas de 1° ».
+À l'écran : un pli en 3D légère (fibres noires parallèles dans une résine ambrée). Une flèche tire dans le sens des fibres, puis en travers : deux barres comparent $E_1 = 161\,000$ MPa et $E_2 = 9\,000$ MPa, avec un repère « acier : 210 000 MPa ». Les axes 1 (fibres) et 2 (perpendiculaire) apparaissent sur le pli. Puis les axes $x$, $y$ de la plaque, fixes, et le pli tourne d'un angle $\delta$ avec ses axes 1, 2. Trois petits plis montrent $\delta = 0^\circ$, $90^\circ$, $45^\circ$, et trois lignes rappellent : $E_1, E_2, G_{12}, \nu_{12}$ dans les axes du pli ; $\mathbf{A}, \mathbf{B}, \mathbf{D}$ dans les axes de la plaque ; passer de l'un à l'autre = tourner le pli de $\delta$. Ensuite une fibre à $100^\circ$ se superpose à une fibre à $-80^\circ$. L'intervalle $]-90^\circ, 90^\circ]$ s'affiche, avec « 180 valeurs au pas de 1° ».
 
 Narration :
-> Commençons par une seule couche, un pli. C'est une feuille de fibres de carbone toutes parallèles, collées par une résine époxyde. Si on tire dans le sens des fibres, le module vaut 161 000 MPa. L'acier, pour comparer, est à 210 000. Si on tire en travers, on tombe à 9 000, dix-huit fois moins. Le pli a deux directions privilégiées, perpendiculaires : on dit qu'il est orthotrope.
-> Chaque pli est posé avec ses fibres tournées d'un angle delta par rapport à l'axe x de la plaque. Une fibre n'a pas de sens : 100 degrés et moins 80 degrés, c'est la même fibre. Delta va donc de moins 89 à 90 degrés, au pas de 1 degré. Ça fait 180 valeurs.
+> Commençons par une seule couche, un pli. C'est une feuille de fibres de carbone toutes parallèles, collées par une résine époxyde. Si on tire dans le sens des fibres, le module vaut 161 000 MPa. L'acier, pour comparer, est à 210 000. Si on tire en travers, on tombe à 9 000, dix-huit fois moins. Le pli a deux directions privilégiées, perpendiculaires : on dit qu'il est orthotrope. On les appelle 1, le long des fibres, et 2, en travers.
+> Chaque pli est posé avec ses fibres tournées d'un angle delta par rapport à l'axe x de la plaque. Les axes x et y sont fixes ; les axes 1 et 2 tournent avec le pli. Les constantes du pli sont données dans ses axes 1 et 2, les rigidités de la plaque dans les axes x et y : on passe des uns aux autres en tournant le pli de delta.
+> Une fibre n'a pas de sens : 100 degrés et moins 80 degrés, c'est la même fibre. Delta va donc de moins 89 à 90 degrés, au pas de 1 degré. Ça fait 180 valeurs.
 
 ## Scène 3 : de S à Q (0:35)
 
-À l'écran : la loi de Hooke en contraintes planes, $\{\varepsilon\} = \mathbf{S}\{\sigma\}$, avec la matrice $\mathbf{S}$ remplie de $1/E_1$, $-\nu_{12}/E_1$, $1/E_2$, $1/G_{12}$. Elle se transforme en $\mathbf{Q} = \mathbf{S}^{-1}$ (encadré). Puis la formule de $\bar Q_{11}(\delta)$ apparaît, suivie de celle de $\bar Q_{16}$, et l'écran se remplit de cosinus et de sinus jusqu'à devenir illisible.
+À l'écran : la loi de Hooke en contraintes planes, $\{\varepsilon\} = \mathbf{S}\{\sigma\}$, avec la matrice $\mathbf{S}$ remplie de $1/E_1$, $-\nu_{12}/E_1$, $1/E_2$, $1/G_{12}$. Elle se transforme en $\mathbf{Q} = \mathbf{S}^{-1}$ (encadré), avec une ligne qui rappelle le sens des indices : $Q_{11}, Q_{22}$ traction, $Q_{66}$ cisaillement, $Q_{12}$ effet Poisson, $Q_{16} = Q_{26} = 0$ dans les axes du pli. Puis la formule de $\bar Q_{11}(\delta)$ apparaît, suivie de celle de $\bar Q_{16}$, et l'écran se remplit de cosinus et de sinus jusqu'à devenir illisible.
 
 Narration :
 > Pour décrire cette rigidité, on écrit la loi de Hooke dans le plan de la plaque : trois déformations, trois contraintes, une matrice 3 par 3. La matrice de souplesse S se remplit directement avec les constantes du pli. On l'inverse, et on obtient Q, la rigidité du pli. Pour un pli tourné de delta, il faut réécrire Q dans les axes de la plaque, et les formules deviennent vite très lourdes. C'est ce que la méthode polaire va simplifier.
 
-## Scène 4 : A, B, D et les matrices étoilées (0:55)
+## Scène 4 : A, B, D et les matrices étoilées (1:00)
 
-À l'écran : une règle qu'on étire (membrane, efforts $\mathbf{N}$) puis qu'on courbe (flexion, moments $\mathbf{M}$). Les deux équations $\mathbf{N} = \mathbf{A}\varepsilon_0 + \mathbf{B}\chi$ et $\mathbf{M} = \mathbf{B}\varepsilon_0 + \mathbf{D}\chi$, avec A, B, D colorés. Une plaque qui se tord quand on la tire illustre $\mathbf{B} \neq 0$.
+À l'écran : une règle qu'on étire (membrane, efforts $\mathbf{N}$) puis qu'on courbe (flexion, moments $\mathbf{M}$ en flèches courbes), avec « elle s'allonge et reste plate → A » et « elle se courbe → D ». Les deux équations $\mathbf{N} = \mathbf{A}\varepsilon_0 + \mathbf{B}\chi$ et $\mathbf{M} = \mathbf{B}\varepsilon_0 + \mathbf{D}\chi$, avec A, B, D colorés. Une plaque qui se tord quand on la tire illustre $\mathbf{B} \neq 0$, avec la mention « c'est ce que supprimera l'objectif $\Phi_1$ ».
 Ensuite la coupe des 20 plis avec l'axe $z$ et le plan moyen. À côté de chaque pli, une barre montre son poids : constant pour A, en $z^3$ pour D (grand à l'extérieur), en $z^2$ avec un signe pour B (négatif en bas, positif en haut). Pour finir, les trois formules $\mathbf{A}^* = \mathbf{A}/h$, $\mathbf{B}^* = 2\mathbf{B}/h^2$, $\mathbf{D}^* = 12\mathbf{D}/h^3$.
 
 Narration :
-> On empile maintenant les vingt plis. Une plaque travaille de deux façons : en membrane, quand on la tire dans son plan, et en flexion, quand on la courbe. La théorie classique des stratifiés relie les deux avec trois matrices. A est la rigidité de membrane, D celle de flexion, et B le couplage. Si B n'est pas nul, tirer sur la plaque la fait aussi se courber.
+> On empile maintenant les vingt plis. Une plaque travaille de deux façons : en membrane, quand on la tire dans son plan, et en flexion, quand on la courbe. La théorie classique des stratifiés relie les deux avec trois matrices. A est la rigidité de membrane, D celle de flexion, et B le couplage. Si B n'est pas nul, tirer sur la plaque la fait aussi se courber. C'est ce que l'objectif Phi1 devra supprimer.
 > Chaque pli compte selon sa hauteur z dans l'épaisseur. Dans A, tous les plis pèsent pareil. Dans D, le poids va en z au cube, donc les plis de l'extérieur dominent. Dans B, le poids va en z carré avec un signe : un pli en bas et le même pli en haut s'annulent. On divise enfin par l'épaisseur pour obtenir A étoile, B étoile et D étoile, en mégapascals, comparables au pli.
 
-## Scène 5 : la méthode polaire (0:55)
+## Scène 5 : la méthode polaire (1:00)
 
-À l'écran : la matrice $\mathbf{Q}$ dont les six composantes changent pendant qu'un repère tourne. Puis les six paramètres polaires apparaissent en deux colonnes : $T_0, T_1$ (modules isotropes), $R_0, R_1$ (modules anisotropes), $\Phi_0, \Phi_1$ (angles polaires). Les formules de la slide 36 pour $8T_0$, $8T_1$, $8R_0e^{4i\Phi_0}$, $8R_1e^{2i\Phi_1}$ s'affichent brièvement.
+À l'écran : la matrice $\mathbf{Q}$ dont les six composantes changent pendant qu'un repère tourne. Puis les six paramètres polaires apparaissent en deux colonnes : $T_0, T_1$ (modules isotropes), $R_0, R_1$ (modules anisotropes), $\Phi_0, \Phi_1$ (angles polaires). Une ligne précise que $\mathbf{L}$ désigne n'importe laquelle de nos matrices ($\mathbf{Q}$, $\mathbf{A}^*$, $\mathbf{B}^*$, $\mathbf{D}^*$), et une autre fait le lien entre les indices du cours ($L_{1111}$, …) et ceux de Voigt ($L_{11}$, …). Les formules de la slide 36 pour $8T_0$, $8T_1$, $8R_0e^{4i\Phi_0}$, $8R_1e^{2i\Phi_1}$ s'affichent brièvement.
 On trace ensuite le diagramme polaire $L_{11}(\theta) = T_0 + 2T_1 + R_0\cos 4(\Phi_0-\theta) + 4R_1\cos 2(\Phi_1-\theta)$ : la courbe démarre sur le « 8 » du pli, puis se déforme pendant que $R_0$ ou $R_1$ glissent vers zéro. On passe par les formes de la slide 38 : cacahuète ($R_0 = 0$), quatre lobes ($R_1 = 0$), cercle ($R_0 = R_1 = 0$).
 
 Narration :
-> Le problème de ces matrices, c'est que leurs composantes changent dès qu'on tourne les axes. Difficile de voir si une plaque est isotrope rien qu'en les regardant. En 1979, Verchery propose de réécrire le même tenseur avec six autres nombres. T0 et T1 sont la partie isotrope, la même dans toutes les directions. R0 et R1 disent de combien la rigidité varie avec la direction. Phi0 et Phi1 sont des angles, qui disent où sont les maxima.
+> Le problème de ces matrices, c'est que leurs composantes changent dès qu'on tourne les axes. Difficile de voir si une plaque est isotrope rien qu'en les regardant. En 1979, Verchery propose de réécrire chacune de ces matrices avec six autres nombres. La recette est la même pour Q, A étoile, B étoile ou D étoile : dans les formules, on appelle simplement L la matrice traitée. T0 et T1 sont la partie isotrope, la même dans toutes les directions. R0 et R1 disent de combien la rigidité varie avec la direction. Phi0 et Phi1 sont des angles, qui disent où sont les maxima.
 > T0, T1, R0 et R1 ne bougent pas quand on tourne les axes. Et les symétries se lisent directement dessus. Sur le diagramme polaire, qui trace la rigidité dans chaque direction : R0 nul donne une cacahuète, R1 nul donne quatre lobes, et les deux nuls donnent un cercle, une plaque isotrope.
 
 ## Scène 6 : des flèches qui se referment (1:10)
