@@ -29,7 +29,7 @@ Orientations in ]-90°, 90°] with a 1° step.
 | `polar.py` | polar parameters T0, T1, R0, R1, Φ0, Φ1, norm, direct polar sums (slides 41-42) |
 | `fitness.py` | partial objectives Φ1-Φ11, cost function, fitness of the statement |
 | `ga.py` | binary-coded GA: initial population, roulette selection, crossover, mutation, elitism |
-| `plots.py` | convergence curve and polar diagrams (SVG + PDF) |
+| `plots.py` | convergence curve and polar diagrams (PNG) |
 | `main.py` | runs the optimisation and writes everything to `results/` |
 | `tests/` | mechanical checks against the course values |
 
@@ -52,4 +52,4 @@ Outputs (in `results/`, not versioned):
 
 - `ga_statistics.csv`: population statistics per generation (`;` separator, UTF-8 with BOM)
 - `best_laminate.txt`: best stacking sequence and its polar parameters
-- `convergence.svg/.pdf`, `polar_diagrams.svg/.pdf`
+- `convergence.png`, `polar_diagrams.png`
