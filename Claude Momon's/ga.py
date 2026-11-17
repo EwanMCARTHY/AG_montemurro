@@ -1,193 +1,227 @@
 """
 ===============================================================================
-ALGORITHME GÉNÉTIQUE STANDARD À CODAGE BINAIRE (EVCSP - M. Montemurro)
+STANDARD BINARY-CODED GENETIC ALGORITHM (EVCSP - M. Montemurro)
 ===============================================================================
-Référence cours : EVCSP_P1.pdf (slides 18 à 28) & EVCSP_P2.pdf (slide 50).
-Contrainte      : Utilise uniquement NumPy comme bibliothèque externe.
+Course references: EVCSP_P1 (GA operators, slides 48-53) and EVCSP_P2
+(slide 50: genetic data of the laminate example).
+Only NumPy is used.
 
-Principe général du codage :
-----------------------------
-On cherche 20 angles d'orientation de plis dans ]-90°, 90°] au pas de 1°,
-soit 180 valeurs entières possibles : -89°, -88°, ..., 0°, ..., +89°, +90°.
+Vocabulary
+----------
+- individual : one laminate = one candidate solution (20 ply angles)
+- gene       : one ply angle, stored on 8 bits
+- genotype   : the bits of an individual (20 genes x 8 bits = 160 bits)
+- phenotype  : the decoded angles in degrees
 
-En binaire :
-- 7 bits permettent seulement 2^7 = 128 valeurs (insuffisant pour 180 angles).
-- 8 bits permettent 2^8 = 256 valeurs (de 0 à 255). On choisit donc 8 bits/pli.
-- Un "individu" (un stratifié complet de 20 plis) est donc représenté par une
-  chaîne de 20 * 8 = 160 bits (des 0 et des 1) appelée "chromosome".
+Encoding of one angle on 8 bits
+-------------------------------
+Angles are in ]-90 deg, 90 deg] with a 1 deg step: -89, -88, ..., 0, ..., 90,
+i.e. 180 possible values.
+- 7 bits give only 2^7 = 128 values: not enough.
+- 8 bits give 2^8 = 256 codes (0 to 255): enough, but 256 - 180 = 76 codes
+  do not correspond to any angle.
+
+Choice made for the 76 extra codes: REJECTION.
+    code 0..179  ->  angle = -89 + code   (0 -> -89 deg, 179 -> +90 deg)
+    code 180..255 -> invalid, never kept in the population
+- The initial population is drawn among the 180 valid codes only.
+- When crossover or mutation creates an invalid code in a child, that gene
+  is rejected and the child keeps the gene of its parent at the same place.
+Why not modulo (angle = -89 + code % 180)? Codes 0..75 and 180..255 would
+then give the same 76 angles, so those angles would be drawn twice as often
+as the 104 others: the search would be biased. Rejection keeps every angle
+equally likely.
 ===============================================================================
 """
 
 import numpy as np
-import fitness as fit  # Module interne du projet (qui n'utilise lui-même que NumPy)
 
-# Constantes de codage binaire d'un gène (= 1 pli)
-BITS_PER_GENE = 8      # Nombre de bits par angle (2^8 = 256 combinaisons possibles)
-ANGLE_MIN = -89.0      # Plus petit angle autorisé dans ]-90°, 90°] au pas de 1°
-ANGLE_MAX = 90.0       # Plus grand angle autorisé
+import fitness as fit
+
+# Encoding constants of one gene (= one ply)
+BITS_PER_GENE = 8      # number of bits per angle
+N_VALID_CODES = 180    # codes 0..179 are angles, 180..255 are rejected
+ANGLE_MIN = -89        # angle of code 0 [deg]; code 179 gives +90 deg
 
 
 # =============================================================================
-# 1. DÉCODAGE : PASSAGE DU GÉNOTYPE (BITS) AU PHÉNOTYPE (ANGLES EN DEGRÉS)
+# 1. CONVERSIONS BETWEEN BITS, CODES AND ANGLES
 # =============================================================================
-def decode_population(pop_bits, n_plies):
+def bits_to_codes(pop_bits, n_plies):
     """
-    Transforme toute la population binaire en matrice d'angles en degrés.
+    Bits -> integer codes.
 
-    Paramètres
-    ----------
-    pop_bits : tableau NumPy d'entiers (0 ou 1) de forme (N, n_plies * 8)
-               Chaque ligne = 1 individu (160 bits).
-    n_plies  : int, nombre de plis du stratifié (20 pour le Groupe 1).
-
-    Retourne
-    --------
-    angles   : tableau NumPy de flottants de forme (N, n_plies)
-               Chaque ligne = les 20 angles en degrés d'un individu.
+    pop_bits : array of 0/1, shape (N, n_plies * 8), one row per individual.
+    Returns  : array of integers in [0, 255], shape (N, n_plies).
     """
-    pop_size = pop_bits.shape[0]  # N = nombre d'individus dans la population
+    pop_size = pop_bits.shape[0]
 
-    # Étape A : On découpe la chaîne de 160 bits en 20 paquets de 8 bits.
-    # La forme passe de (N, 160) à (N, 20, 8).
+    # Cut each row of 160 bits into 20 groups of 8 bits: shape (N, 20, 8)
     genes = pop_bits.reshape(pop_size, n_plies, BITS_PER_GENE)
 
-    # Étape B : On convertit chaque paquet de 8 bits en un entier entre 0 et 255.
-    # Les poids binaires sont [128, 64, 32, 16, 8, 4, 2, 1].
+    # Weight of each bit, most significant first: [128, 64, 32, 16, 8, 4, 2, 1]
     weights = 2 ** np.arange(BITS_PER_GENE - 1, -1, -1)
 
-    # Produit matriciel (@) sur le dernier axe : somme(bit_j * poids_j).
-    # Exemple : [1, 0, 0, 0, 0, 0, 0, 1] -> 128 + 1 = 129.
-    # Résultat "ints" de forme (N, 20) contenant des entiers dans [0, 255].
-    ints = genes @ weights
+    # Code = sum(bit_j * weight_j). Example: [1,0,0,0,0,0,0,1] -> 128 + 1 = 129
+    return genes @ weights
 
-    # Étape C : Mapping linéaire de [0, 255] vers [-89°, +90°].
-    # - Si int = 0   -> -89 + round(0)   = -89°
-    # - Si int = 255 -> -89 + round(179) = +90°
-    # L'arrondi np.round(...) garantit des angles entiers (pas de 1°).
-    # Avantage : TOUTE suite de 8 bits donne un angle valide, sans valeur interdite.
-    angles = ANGLE_MIN + np.round((ints / 255.0) * (ANGLE_MAX - ANGLE_MIN))
-    return angles
+
+def codes_to_bits(codes):
+    """
+    Integer codes -> bits (inverse of bits_to_codes).
+
+    codes   : array of integers, shape (N, n_plies).
+    Returns : array of 0/1 (int8), shape (N, n_plies * 8).
+    """
+    # For each code, bit j (from the most significant) is (code >> j) & 1.
+    # codes[..., None] adds an axis so that the 8 shifts apply to every code.
+    shifts = np.arange(BITS_PER_GENE - 1, -1, -1)
+    bits = (codes[..., None] >> shifts) & 1          # shape (N, n_plies, 8)
+    return bits.reshape(codes.shape[0], -1).astype(np.int8)
+
+
+def decode_population(pop_bits, n_plies):
+    """
+    Genotype (bits) -> phenotype (angles in degrees), shape (N, n_plies).
+    Only valid codes (0..179) are ever present in the population.
+    """
+    return ANGLE_MIN + bits_to_codes(pop_bits, n_plies)
 
 
 # =============================================================================
-# 2. INITIALISATION : CRÉATION DE LA POPULATION DE DÉPART
+# 2. INITIAL POPULATION (P1 slide 48: "N individus obtenus par tirage aleatoire")
 # =============================================================================
 def init_population(pop_size, n_plies, rng):
     """
-    Génère aléatoirement la génération 0 (P1 slide 19).
-
-    Chaque bit est tiré à pile ou face (0 ou 1 équiprobables).
-    Retourne un tableau de forme (pop_size, n_plies * 8).
+    Random generation 0. Each gene is drawn uniformly among the 180 valid
+    codes, so every angle has the same probability 1/180.
+    Returns the bits, shape (pop_size, n_plies * 8).
     """
-    n_bits = n_plies * BITS_PER_GENE
-    # rng.integers(0, 2, ...) tire des entiers dans {0, 1} (borne haute 2 exclue).
-    # dtype=np.int8 économise la mémoire (1 octet par bit au lieu de 8).
-    return rng.integers(0, 2, size=(pop_size, n_bits), dtype=np.int8)
+    codes = rng.integers(0, N_VALID_CODES, size=(pop_size, n_plies))
+    return codes_to_bits(codes)
 
 
 # =============================================================================
-# 3. SÉLECTION : ROUE DE LOTERIE BIAISÉE (P1 slide 22)
+# 3. SELECTION: BIASED ROULETTE WHEEL (P2 slide 50, "roue de loterie biaisee")
 # =============================================================================
 def roulette_selection(pop_bits, fit_values, rng):
     """
-    Sélectionne N parents pour la reproduction.
-    Plus un individu a une fitness f_i élevée, plus sa part de la roulette
-    est grande, et plus il a de chances d'être tiré (mais les moins bons
-    gardent une petite chance de transmettre des gènes utiles).
+    Draws N parents. Individual i gets a slice of the wheel proportional to
+    its fitness f_i: P_i = f_i / sum(f_j). Good individuals are drawn more
+    often, weaker ones keep a small chance (except the worst, whose f = 0).
     """
     total = np.sum(fit_values)
 
-    # Sécurité : si tous les individus ont une fitness nulle (très rare),
-    # on donne à chacun la même probabilité 1/N pour éviter une division par 0.
+    # Safety: if every fitness is zero, all individuals get the same chance
     if total == 0.0:
         probs = np.full(len(fit_values), 1.0 / len(fit_values))
     else:
-        # Probabilité de sélection du i-ème individu : P_i = f_i / somme(f_j)
         probs = fit_values / total
 
-    # On fait tourner la roue N fois (tirage AVEC remise : replace=True).
-    # Un très bon individu peut donc être choisi plusieurs fois comme parent.
+    # N spins of the wheel, with replacement: a very good individual can be
+    # chosen several times as a parent.
     indices = rng.choice(len(pop_bits), size=len(pop_bits), replace=True, p=probs)
 
-    # .copy() est crucial pour ne pas modifier les individus d'origine par mégarde.
+    # .copy() so that later operators never modify the old population
     return pop_bits[indices].copy()
 
 
 # =============================================================================
-# 4. CROISEMENT (CROSS-OVER) : MÉLANGE DES GÉNOTYPES DES PARENTS (P1 slide 23)
+# 4. CROSSOVER: MIXING THE PARENTS' GENOTYPES (P1 slide 48)
 # =============================================================================
 def crossover_population(parents, p_crossover, rng, crossover_type="one_point"):
     """
-    Regroupe les parents deux par deux : (0,1), (2,3), (4,5)...
-    Avec une probabilité p_crossover (ex: 85%), on mélange leurs chromosomes
-    binaires pour créer 2 enfants. Sinon (15%), les enfants sont des clones
-    exacts des 2 parents.
+    Parents are paired two by two: (0,1), (2,3), (4,5)...
+    With probability p_crossover (0.85) the pair exchanges part of its bits
+    to make 2 children; otherwise the children are copies of the parents.
+    Child i always starts with the bits of parent i (used by the rejection
+    step, which falls back on parent i).
     """
     children = parents.copy()
     pop_size, n_bits = parents.shape
 
-    # On avance par pas de 2 (i = 0, 2, 4, ...) pour former les couples.
-    # "pop_size - 1" évite un crash si jamais pop_size est impair.
+    # Step of 2 to build the pairs; "pop_size - 1" handles an odd pop_size
     for i in range(0, pop_size - 1, 2):
-        # Tirage d'un nombre dans [0, 1[ : si < 0.85, il y a croisement.
         if rng.random() < p_crossover:
             p1 = parents[i]
             p2 = parents[i + 1]
 
             if crossover_type == "one_point":
-                # Croisement en 1 point (illustré P1 slide 23) :
-                # On choisit une coupure aléatoire "cut" entre 1 et 159.
-                # Enfant 1 = [début de P1] + [fin de P2]
-                # Enfant 2 = [début de P2] + [fin de P1]
+                # One cut point "cut" between 1 and 159:
+                #   child 1 = [start of P1] + [end of P2]
+                #   child 2 = [start of P2] + [end of P1]
                 cut = rng.integers(1, n_bits)
                 children[i] = np.concatenate([p1[:cut], p2[cut:]])
                 children[i + 1] = np.concatenate([p2[:cut], p1[cut:]])
 
             elif crossover_type == "two_point":
-                # Croisement en 2 points :
-                # On tire 2 coupures distinctes c1 < c2 (replace=False).
-                # On échange uniquement le segment central [c1:c2] entre P1 et P2.
-                # Utile pour les stratifiés car les plis externes (haut & bas)
-                # restent groupés ensemble.
+                # Two distinct cut points c1 < c2: only the middle segment
+                # [c1:c2] is exchanged between P1 and P2.
                 c1, c2 = sorted(rng.choice(np.arange(1, n_bits), size=2, replace=False))
                 children[i] = np.concatenate([p1[:c1], p2[c1:c2], p1[c2:]])
                 children[i + 1] = np.concatenate([p2[:c1], p1[c1:c2], p2[c2:]])
 
             else:
-                raise ValueError(f"Type de croisement inconnu : {crossover_type}")
+                raise ValueError(f"Unknown crossover type: {crossover_type}")
 
     return children
 
 
 # =============================================================================
-# 5. MUTATION : ALTÉRATION STOCHASTIQUE DES BITS (P1 slide 24)
+# 5. MUTATION: RANDOM ALTERATION OF THE GENES (P1 slide 53, P2 slide 50)
 # =============================================================================
-def mutate_population(pop_bits, p_mutation, rng):
+def mutate_population(pop_bits, p_mutation, n_plies, rng):
     """
-    Maintient la biodiversité dans la population pour éviter que l'AG ne reste
-    bloqué dans un minimum local (convergence prématurée).
+    Keeps diversity in the population so that the GA does not get stuck.
 
-    Chaque bit de toute la matrice (N x 160) a une petite probabilité pm
-    (ex: 1/500 = 0.002) d'être inversé : 0 devient 1, et 1 devient 0.
+    As in the course, the probability pm (= 1/N) applies to each GENE:
+    each gene of each individual mutates with probability pm, and a
+    mutation flips one randomly chosen bit of that gene (0 <-> 1).
     """
-    # On tire un tableau de nombres aléatoires entre 0 et 1 de même taille que pop_bits.
-    # "mask" vaut True là où le tirage est inférieur à p_mutation.
-    mask = rng.random(pop_bits.shape) < p_mutation
+    pop_size = pop_bits.shape[0]
+
+    # True where a gene mutates, shape (N, n_plies)
+    mask = rng.random((pop_size, n_plies)) < p_mutation
+
+    # Row index and gene index of every mutating gene
+    rows, genes = np.nonzero(mask)
+
+    # Position of the flipped bit: first bit of the gene + random offset 0..7
+    bit_pos = genes * BITS_PER_GENE + rng.integers(0, BITS_PER_GENE, size=rows.size)
 
     mutated = pop_bits.copy()
-    # Astuce mathématique pour inverser un bit : 1 - 0 = 1 et 1 - 1 = 0.
-    mutated[mask] = 1 - mutated[mask]
+    mutated[rows, bit_pos] = 1 - mutated[rows, bit_pos]   # 1 - 0 = 1, 1 - 1 = 0
     return mutated
 
 
 # =============================================================================
-# 6. FONCTION UTILITAIRE D'ÉVALUATION
+# 6. REJECTION OF THE INVALID CODES (see the module header)
 # =============================================================================
-def _evaluate_population(angles, Q, t_ply, objectives, K_A, K_D):
+def reject_invalid_genes(children, parents, n_plies):
     """
-    Calcule le coût Phi(delta) de chaque individu (stratifié de 20 angles)
-    en appelant fit.cost() du module fitness.py.
-    Rappel : plus le coût Phi est proche de 0, meilleur est le stratifié.
+    Any gene of a child whose code is >= 180 (no angle) is rejected: the
+    child takes back the gene of its parent at the same position (parent i
+    for child i, always valid). The crossover or mutation is thus cancelled
+    for that gene only.
+
+    Returns the repaired children and the number of rejected genes.
+    """
+    child_codes = bits_to_codes(children, n_plies)
+    parent_codes = bits_to_codes(parents, n_plies)
+
+    invalid = child_codes >= N_VALID_CODES
+    child_codes[invalid] = parent_codes[invalid]
+
+    return codes_to_bits(child_codes), int(invalid.sum())
+
+
+# =============================================================================
+# 7. EVALUATION OF A POPULATION
+# =============================================================================
+def evaluate_population(angles, Q, t_ply, objectives, K_A, K_D):
+    """
+    Cost Phi(delta) of every individual (one row of angles each), computed
+    by fitness.cost. The closer to 0, the better the laminate.
     """
     return np.array([
         fit.cost(ind, Q, t_ply, objectives, K_A=K_A, K_D=K_D) for ind in angles
@@ -195,7 +229,7 @@ def _evaluate_population(angles, Q, t_ply, objectives, K_A, K_D):
 
 
 # =============================================================================
-# 7. BOUCLE PRINCIPALE DE L'ALGORITHME GÉNÉTIQUE (P1 slides 19 & 25)
+# 8. MAIN LOOP OF THE GA (P1 slide 48: flow chart of the standard GA)
 # =============================================================================
 def run_ga(
     Q,
@@ -214,91 +248,89 @@ def run_ga(
     verbose=True,
 ):
     """
-    Exécute l'AG standard avec élitisme (P1 slides 19 & 25).
+    Standard GA with elitism.
 
-    Paramètres principaux (issus de config.py) :
-    - Q                  : matrice 3x3 de rigidité réduite du pli de base [MPa]
-    - t_ply              : épaisseur d'un pli [mm]
-    - n_plies            : nombre de plis (20 pour le Groupe 1)
-    - objectives         : liste des indices d'objectifs partiels ([1, 4, 9])
-    - pop_size           : taille N de la population (500)
-    - n_generations      : critère d'arrêt Ngen (500)
-    - p_crossover        : probabilité pc de croisement (0.85)
-    - p_mutation         : probabilité pm de mutation par bit (1/500 = 0.002)
-    - selection_pressure : exposant p de la fitness (1.0)
-    - crossover_type     : "one_point" ou "two_point"
-    - seed               : graine aléatoire pour rendre les résultats reproductibles
+    Main inputs (from config.py):
+    - Q                  : 3x3 reduced stiffness of the ply [MPa]
+    - t_ply              : ply thickness [mm]
+    - n_plies            : number of plies (20 for group 1)
+    - objectives         : indices of the partial objectives ([1, 4, 9])
+    - pop_size           : population size N
+    - n_generations      : stopping criterion Ngen
+    - p_crossover        : crossover probability pc
+    - p_mutation         : mutation probability pm, per gene
+    - selection_pressure : exponent p of the fitness (statement: p = 1)
+    - crossover_type     : "one_point" or "two_point"
+    - seed               : random seed, for reproducible runs
+
+    Returns a dict with the best angles, the best cost and the history
+    (one dict of statistics per generation).
     """
-    # Initialisation du générateur de nombres aléatoires NumPy
     rng = np.random.default_rng(seed)
 
-    # Vérifie que la liste d'objectifs (ex: [1, 4, 9]) est cohérente
+    # Refuse meaningless combinations of objectives (see fitness.py)
     fit.check_objectives(objectives)
 
-    # --- GÉNÉRATION 0 : Création et évaluation de la population initiale ---
+    # --- GENERATION 0: random population and its evaluation ---
     pop_bits = init_population(pop_size, n_plies, rng)
     angles = decode_population(pop_bits, n_plies)
-    costs = _evaluate_population(angles, Q, t_ply, objectives, K_A, K_D)
+    costs = evaluate_population(angles, Q, t_ply, objectives, K_A, K_D)
+    n_rejected = 0          # no rejection for the initial population
 
-    # Liste qui stockera l'évolution des statistiques à chaque génération
     history = []
 
-    # --- BOUCLE D'ÉVOLUTION SUR N_GENERATIONS ---
     for gen in range(n_generations):
-        # A. Sauvegarde du meilleur individu de la génération courante (pour l'élitisme)
-        best_idx = int(np.argmin(costs))       # Indice du coût le plus petit
-        best_bits = pop_bits[best_idx].copy()  # Son chromosome binaire
-        best_cost = float(costs[best_idx])     # Sa valeur de fonction de coût Phi
+        # A. Remember the best individual of the current generation (elitism)
+        best_idx = int(np.argmin(costs))
+        best_bits = pop_bits[best_idx].copy()
+        best_cost = float(costs[best_idx])
 
-        # B. Enregistrement des statistiques (pour tracer la courbe de convergence)
+        # B. Statistics of the current population (CSV and convergence curve)
         history.append({
             "generation": gen,
             "min": best_cost,
             "mean": float(np.mean(costs)),
+            "median": float(np.median(costs)),
             "max": float(np.max(costs)),
             "std": float(np.std(costs)),
+            "rejected_genes": n_rejected,
+            "best_stacking": "/".join(str(int(a)) for a in angles[best_idx]),
         })
 
-        # Affichage périodique dans le terminal pour suivre la progression
         if verbose and (gen == 0 or (gen + 1) % 50 == 0):
-            print(
-                f"Gen {gen + 1:3d}/{n_generations} | "
-                f"Meilleur coût = {best_cost:.4e} | "
-                f"Moyenne = {history[-1]['mean']:.4e}"
-            )
+            print(f"Gen {gen + 1:3d}/{n_generations} | best cost = {best_cost:.4e} | "
+                  f"mean = {history[-1]['mean']:.4e}")
 
-        # C. Calcul de l'adaptation (fitness) dans [0, 1] à partir des coûts
-        # Meilleur individu -> fitness = 1 ; pire individu -> fitness = 0
+        # C. Fitness in [0, 1] from the costs (statement 2.a):
+        #    best individual -> 1, worst individual -> 0
         fit_vals = fit.fitness(costs, p=selection_pressure)
 
-        # D. Reproduction : Sélection -> Croisement -> Mutation
+        # D. Reproduction: selection -> crossover -> mutation -> rejection
         parents = roulette_selection(pop_bits, fit_vals, rng)
-        offspring = crossover_population(parents, p_crossover, rng, crossover_type=crossover_type)
-        offspring = mutate_population(offspring, p_mutation, rng)
+        offspring = crossover_population(parents, p_crossover, rng, crossover_type)
+        offspring = mutate_population(offspring, p_mutation, n_plies, rng)
+        offspring, n_rejected = reject_invalid_genes(offspring, parents, n_plies)
 
-        # E. Évaluation des enfants (nouvelle génération)
+        # E. Evaluation of the children
         offspring_angles = decode_population(offspring, n_plies)
-        offspring_costs = _evaluate_population(offspring_angles, Q, t_ply, objectives, K_A, K_D)
+        offspring_costs = evaluate_population(offspring_angles, Q, t_ply, objectives, K_A, K_D)
 
-        # F. Élitisme (P1 slide 25) :
-        # On cherche le pire individu parmi les enfants (coût maximal) et on le
-        # remplace par le meilleur individu sauvegardé de la génération précédente.
-        # Cela garantit que la meilleure solution trouvée ne soit jamais perdue !
+        # F. Elitism (P1 slide 48): the worst child is replaced by the best
+        #    individual of the previous generation, so the best solution found
+        #    so far is never lost.
         worst_idx = int(np.argmax(offspring_costs))
         offspring[worst_idx] = best_bits
         offspring_costs[worst_idx] = best_cost
 
-        # G. La nouvelle génération devient la génération courante pour l'itération suivante
+        # G. The children become the current generation
         pop_bits = offspring
         costs = offspring_costs
+        angles = decode_population(pop_bits, n_plies)
 
-    # --- FIN DE L'ALGORITHME : Extraction du meilleur individu final ---
+    # --- END: best individual of the last generation ---
     final_best_idx = int(np.argmin(costs))
-    # On passe [final_best_idx:final_best_idx + 1] pour garder une forme 2D (1, 160)
-    best_angles = decode_population(pop_bits[final_best_idx:final_best_idx + 1], n_plies)[0]
-
     return {
-        "best_angles": best_angles,
+        "best_angles": angles[final_best_idx],
         "best_cost": float(costs[final_best_idx]),
         "history": history,
     }
