@@ -39,11 +39,23 @@ def test_single_ply_objectives(q_t300):
     assert phi[3] == pytest.approx(0.0, abs=1e-20)
 
 
-def test_slide_51_cost_is_small(q_t300):
-    """P2 slides 49-51: [9/0/18/-4/14/5] with Phi1 + Phi3 + Phi7 + Phi11
-    has an objective value of 3.5873e-6 on the slide."""
+def test_slide_51_cost(q_t300):
+    """P2 slides 49-51: [9/0/18/-4/14/5] with Phi1 + Phi3 + Phi7 + Phi11.
+
+    Group decision: we keep the formula of slide 45, Phi1 = (||B*|| / ||Q||)^2
+    with B* = 2B/h^2 (the definition used by the statement and by the polar
+    table of slide 51). With it the cost is 9.9648e-8.
+
+    The slide prints 3.5873e-6, which is exactly n^2 = 36 times larger: it
+    corresponds to Phi1 computed with n * B* instead of B*. We treat it as a
+    numerical slip on the slide. This test documents both facts.
+    """
+    n = 6
     value = fit.cost([9, 0, 18, -4, 14, 5], q_t300, T_PLY, [1, 3, 7, 11])
-    assert value == pytest.approx(3.5873e-6, rel=1e-3)
+    # Our value, with the slide 45 formula
+    assert value == pytest.approx(9.9648e-8, rel=1e-4)
+    # The slide value is recovered with the extra factor n^2
+    assert value * n**2 == pytest.approx(3.5873e-6, rel=1e-4)
 
 
 def test_incompatible_objectives_rejected():
