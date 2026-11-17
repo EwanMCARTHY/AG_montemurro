@@ -20,3 +20,6 @@ docs/*.pdf
 
 # --- Generated outputs (CSV, figures) ---
 results/
+
+# --- Video: heavy renders and exports ---
+video/build/
