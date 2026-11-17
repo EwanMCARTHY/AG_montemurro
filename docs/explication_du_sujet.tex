@@ -1,0 +1,727 @@
+% =============================================================================
+% Le projet AG expliqué depuis zéro (EVCSP, groupe 1)
+% Compilation : lualatex explication_du_sujet.tex (deux fois, pour la table
+% des matières)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\usepackage[most]{tcolorbox}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlist{itemsep=0.15em,topsep=0.3em}
+\renewcommand{\arraystretch}{1.25}
+
+% Encadrés
+\newtcolorbox{idee}[1][]{colback=blue!4,colframe=blue!45!black,fonttitle=\bfseries,title={#1},sharp corners,boxrule=0.6pt}
+\newtcolorbox{attention}[1][]{colback=orange!6,colframe=orange!70!black,fonttitle=\bfseries,title={#1},sharp corners,boxrule=0.6pt}
+
+% Raccourcis
+\newcommand{\As}{\mathbf{A}^{*}}
+\newcommand{\Bs}{\mathbf{B}^{*}}
+\newcommand{\Ds}{\mathbf{D}^{*}}
+\newcommand{\Cm}{\mathbf{C}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\Sm}{\mathbf{S}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\textbf{Le projet AG expliqué depuis zéro}\\[0.3em]
+\large Optimisation d'un stratifié carbone/époxyde par algorithme génétique\\
+et méthode polaire --- EVCSP, groupe 1}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-3em}
+
+\begin{idee}[Comment lire ce document]
+Il explique \textbf{tout le sujet} comme si tu ne l'avais jamais vu, dans
+l'ordre logique : d'abord \emph{ce qu'on fabrique} (sections 1 à 3),
+ensuite \emph{comment on décrit sa rigidité} (section 4), puis \emph{ce qu'on
+cherche} (section 5) et enfin \emph{comment on le cherche} (section 6). Les
+sections 7 et 8 font le lien avec le code et les résultats. Les numéros de
+slides renvoient au cours (P1, P2) et à l'énoncé.
+\end{idee}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Le projet en une phrase}
+% =============================================================================
+On cherche dans quelles directions orienter les \textbf{20 couches de fibres
+de carbone} d'une plaque pour qu'elle se comporte mécaniquement d'une façon
+précise (imposée par l'énoncé), et on fait chercher ces 20 angles par un
+\textbf{algorithme génétique}, un programme qui imite l'évolution naturelle.
+
+% =============================================================================
+\section{Qu'est-ce qu'un composite stratifié ?}
+% =============================================================================
+\subsection{Le pli}
+Un \textbf{pli} (ou couche) est une feuille très fine, ici
+$t_{\text{ply}} = 0{,}125$~mm, faite de :
+\begin{itemize}
+  \item \textbf{fibres de carbone} toutes parallèles : très rigides et très
+        résistantes \emph{dans leur direction} ;
+  \item \textbf{résine époxyde} (la \og matrice\fg) qui colle les fibres :
+        molle.
+\end{itemize}
+Conséquence : un pli est \textbf{très rigide dans le sens des fibres} et
+\textbf{mou en travers}.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l l X}
+\toprule
+Grandeur & Valeur & Ce que ça veut dire\\
+\midrule
+$E_1$ & 161\,000 MPa & rigidité en tirant \textbf{dans le sens des fibres}
+  (l'acier est à 210\,000 MPa)\\
+$E_2$ & 9\,000 MPa & rigidité en tirant \textbf{en travers} : 18 fois moins !\\
+$G_{12}$ & 6\,100 MPa & rigidité en \textbf{cisaillement} (on fait
+  \og glisser\fg{} le pli sur lui-même)\\
+$\nu_{12}$ & 0,26 & coefficient de Poisson : si on allonge le pli de
+  $\varepsilon$ selon 1, il rétrécit de $0{,}26\,\varepsilon$ selon 2\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Un matériau dont les propriétés dépendent de la direction est dit
+\textbf{anisotrope}. Le pli est un cas particulier : il a deux directions
+privilégiées perpendiculaires (fibres et travers), il est
+\textbf{orthotrope}.
+
+\subsection{L'orientation d'un pli}
+Chaque pli est posé avec ses fibres tournées d'un angle $\delta$ par rapport
+à l'axe $x$ de la plaque : $\delta = 0^\circ$, fibres selon $x$ ;
+$\delta = 90^\circ$, fibres selon $y$ ; $\delta = 45^\circ$, en diagonale.
+
+Pourquoi l'intervalle $]-90^\circ, 90^\circ]$ ? Une fibre n'a pas de sens :
+une fibre à $100^\circ$ est la même qu'une fibre à $-80^\circ$. Au pas de
+$1^\circ$, il y a donc exactement \textbf{180 orientations} :
+$-89, -88, \dots, 0, \dots, 89, 90$.
+
+\subsection{Le stratifié}
+Un \textbf{stratifié} est un empilement de plis collés, noté du bas vers le
+haut : $[0/45/{-45}/90]$ = 4 plis, le premier à $0^\circ$, le dernier à
+$90^\circ$. Chez nous : $n = 20$ plis, épaisseur totale
+$h = n\,t_{\text{ply}} = 2{,}5$~mm.
+
+\begin{idee}[L'idée clé du projet]
+En choisissant les angles, on \og fabrique\fg{} un matériau sur mesure. Tous
+les plis à $0^\circ$ : plaque très rigide selon $x$, molle selon $y$. Angles
+bien répartis : plaque qui se comporte pareil dans toutes les directions.
+Il y a $180^{20} \approx 1{,}3\times10^{45}$ empilements possibles :
+impossible de tous les essayer, d'où l'optimisation.
+\end{idee}
+
+% =============================================================================
+\section{La rigidité : du pli à la plaque}
+% =============================================================================
+\subsection{Loi de Hooke en contraintes planes}
+Pour un ressort : force = raideur $\times$ allongement. Pour un matériau,
+c'est pareil avec des \textbf{contraintes} $\sigma$ (force par surface, en
+MPa) et des \textbf{déformations} $\varepsilon$ (allongement relatif, sans
+unité). Une plaque est fine : on ne regarde que ce qui se passe \textbf{dans
+son plan} (hypothèse des \emph{contraintes planes}). Il reste 3 contraintes
+et 3 déformations : $\sigma_{11}, \sigma_{22}, \sigma_{12}$ et
+$\varepsilon_{11}, \varepsilon_{22}, \gamma_{12} = 2\varepsilon_{12}$
+(distorsion d'angle). On les relie par une matrice $3\times3$.
+
+\subsection{La souplesse \texorpdfstring{$\Sm$}{S} et la rigidité \texorpdfstring{$\Q$}{Q}}
+\emph{Fichier \code{laminate.py}, fonctions \code{ply\_compliance} et
+\code{ply\_stiffness} (énoncé §2.b).}
+
+Le plus naturel est d'écrire \og déformation = $\Sm$ $\times$ contrainte\fg,
+car $\Sm$ se remplit directement avec les constantes de l'énoncé :
+\[
+\begin{Bmatrix}\varepsilon_{11}\\ \varepsilon_{22}\\ \gamma_{12}\end{Bmatrix}
+=
+\underbrace{\begin{bmatrix}
+ \dfrac{1}{E_1} & -\dfrac{\nu_{12}}{E_1} & 0\\[1.2ex]
+ -\dfrac{\nu_{12}}{E_1} & \dfrac{1}{E_2} & 0\\[1.2ex]
+ 0 & 0 & \dfrac{1}{G_{12}}
+\end{bmatrix}}_{\Sm}
+\begin{Bmatrix}\sigma_{11}\\ \sigma_{22}\\ \sigma_{12}\end{Bmatrix}
+\]
+Lecture : si je tire avec $\sigma_{11}$, le pli s'allonge de
+$\sigma_{11}/E_1$ selon 1 et rétrécit de $\nu_{12}\sigma_{11}/E_1$ selon 2.
+Les zéros disent que tirer ne crée pas de cisaillement (orthotropie, dans les
+axes du pli). On veut plutôt \og contrainte = $\Q$ $\times$ déformation\fg :
+\[
+\boxed{\;\Q = \Sm^{-1}\;}
+\qquad\text{(matrice de rigidité réduite du pli, l'objet central du projet)}
+\]
+
+\subsection{Tourner un pli : \texorpdfstring{$\Q(\delta)$}{Q(delta)}}
+\emph{Fonction \code{rotate\_stiffness} (P2 slide 27).}
+
+$\Q$ est écrite dans les axes des fibres. Pour un pli tourné de $\delta$, il
+faut l'exprimer dans les axes $x, y$ de la plaque. Avec $c = \cos\delta$ et
+$s = \sin\delta$, par exemple :
+\[
+\bar Q_{11} = Q_{11}c^4 + 2(Q_{12}+2Q_{66})s^2c^2 + Q_{22}s^4,
+\qquad
+\bar Q_{16} = (Q_{11}-Q_{12}-2Q_{66})\,s c^3 + (Q_{12}-Q_{22}+2Q_{66})\,s^3 c,
+\]
+et quatre autres formules du même genre. C'est lourd : c'est justement pour
+ça que la méthode polaire (section 4) existe.
+
+\subsection{Membrane, flexion et couplage : \texorpdfstring{$\mathbf{A}, \mathbf{B}, \mathbf{D}$}{A, B, D}}
+\emph{Fonction \code{abd\_matrices} (P2 slide 41).}
+
+Une plaque peut être sollicitée de deux façons :
+\begin{itemize}
+  \item \textbf{en membrane} : on la tire ou la cisaille dans son plan (une
+        feuille qu'on étire). Efforts $\mathbf{N}$, déformations du plan
+        moyen $\boldsymbol{\varepsilon}_0$ ;
+  \item \textbf{en flexion} : on la plie (une règle qu'on courbe). Moments
+        $\mathbf{M}$, courbures $\boldsymbol{\chi}$.
+\end{itemize}
+La Théorie Classique des Stratifiés relie tout ça :
+\[
+\mathbf{N} = \mathbf{A}\,\boldsymbol{\varepsilon}_0 + \mathbf{B}\,\boldsymbol{\chi},
+\qquad
+\mathbf{M} = \mathbf{B}\,\boldsymbol{\varepsilon}_0 + \mathbf{D}\,\boldsymbol{\chi}.
+\]
+$\mathbf{A}$ : rigidité de \textbf{membrane} ; $\mathbf{D}$ : rigidité de
+\textbf{flexion} ; $\mathbf{B}$ : \textbf{couplage}. Si $\mathbf{B}\neq0$,
+tirer sur la plaque la fait aussi se courber (et inversement) : une pièce qui
+se tord quand on la tire, ou qui gauchit en refroidissant après cuisson.
+
+Le pli $k$ occupe $z_{k-1} \le z \le z_k$, avec $z=0$ au milieu,
+$z_0 = -h/2$ en bas et $z_n = +h/2$ en haut :
+\[
+\mathbf{A} = \sum_{k=1}^{n} \Q_k\,(z_k - z_{k-1}),
+\qquad
+\mathbf{B} = \frac12\sum_{k=1}^{n} \Q_k\,(z_k^2 - z_{k-1}^2),
+\qquad
+\mathbf{D} = \frac13\sum_{k=1}^{n} \Q_k\,(z_k^3 - z_{k-1}^3).
+\]
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+  \foreach \i/\c in {0/blue!15,1/blue!25,2/blue!15,3/blue!25,4/blue!15,5/blue!25}{
+    \fill[\c] (0,\i*0.5) rectangle (6,\i*0.5+0.5);
+    \draw (0,\i*0.5) rectangle (6,\i*0.5+0.5);}
+  \draw[dashed,red!70!black,thick] (-0.4,1.5) -- (6.4,1.5) node[right] {$z=0$ (plan moyen)};
+  \node[left] at (0,0) {$z_0=-h/2$};
+  \node[left] at (0,3) {$z_n=+h/2$};
+  \node at (3,0.25) {\small pli 1};
+  \node at (3,2.75) {\small pli $n$};
+  \draw[-{Stealth}] (7.2,0) -- (7.2,3.2) node[above] {$z$};
+\end{tikzpicture}
+\end{center}
+
+\begin{idee}[Intuition]
+\begin{itemize}
+  \item $\mathbf{A}$ est une simple \textbf{moyenne} des plis : l'ordre
+        d'empilement ne compte pas.
+  \item $\mathbf{D}$ pondère par $z^3$ : les plis \textbf{à l'extérieur}
+        comptent beaucoup plus que ceux du milieu (comme une poutre en I).
+  \item $\mathbf{B}$ pondère par $z^2$ avec un signe : un pli en bas et le
+        même pli en haut s'annulent. Un stratifié \textbf{symétrique}
+        (miroir par rapport au milieu, ex. $[0/45/45/0]$) a donc toujours
+        $\mathbf{B}=0$.
+\end{itemize}
+\end{idee}
+
+\subsection{Matrices homogénéisées}
+\emph{Fonction \code{homogenised\_matrices}.}
+
+$\mathbf{A}$, $\mathbf{B}$, $\mathbf{D}$ n'ont pas les mêmes unités. On les
+normalise pour les comparer au pli (toutes deviennent des MPa) :
+\[
+\boxed{\;\As = \frac{\mathbf{A}}{h},\qquad
+\Bs = \frac{2\,\mathbf{B}}{h^2},\qquad
+\Ds = \frac{12\,\mathbf{D}}{h^3},\qquad
+\Cm = \As - \Ds\;}
+\]
+Exemple : tous les plis à $0^\circ$ donnent $\As = \Ds = \Q$ et $\Bs = 0$.
+$\Cm$ mesure la différence entre membrane et flexion ($\Cm=0$ : même
+comportement dans les deux cas, on dit \emph{homogène}).
+
+% =============================================================================
+\section{La méthode polaire (Verchery, 1979)}
+% =============================================================================
+\emph{Fichier \code{polar.py} (P2 slides 35 à 42).}
+
+\subsection{Le problème des composantes cartésiennes}
+Une matrice comme $\Q$ a 6 nombres utiles, mais ils \textbf{changent quand
+on tourne les axes}. Difficile de répondre à \og cette plaque est-elle
+isotrope ?\fg{} en regardant juste les composantes.
+
+\subsection{Les six paramètres polaires}
+On réécrit le même tenseur avec six autres nombres, mieux choisis :
+\begin{center}
+\begin{tabularx}{\linewidth}{l l X}
+\toprule
+Paramètres & Nom & Sens physique\\
+\midrule
+$T_0, T_1$ & modules isotropes & la partie identique dans toutes les directions\\
+$R_0, R_1$ & modules anisotropes & \textbf{combien} la rigidité varie avec la direction\\
+$\Phi_0, \Phi_1$ & angles polaires & \textbf{dans quelle direction} sont les maxima\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Formules (slide 36), avec $L_{1111}=L_{11}$, $L_{1122}=L_{12}$,
+$L_{1212}=L_{66}$, $L_{1112}=L_{16}$, $L_{2212}=L_{26}$ :
+\begin{align*}
+8\,T_0 &= L_{11} - 2L_{12} + 4L_{66} + L_{22}\\
+8\,T_1 &= L_{11} + 2L_{12} + L_{22}\\
+8\,R_0\,e^{4i\Phi_0} &= L_{11} + 4i\,L_{16} - 2L_{12} - 4L_{66} - 4i\,L_{26} + L_{22}\\
+8\,R_1\,e^{2i\Phi_1} &= L_{11} + 2i\,L_{16} + 2i\,L_{26} - L_{22}
+\end{align*}
+On utilise des nombres complexes : $R$ est le module, $\Phi$ vient de
+l'argument. Et dans l'autre sens (slide 35), par exemple :
+\[
+L_{11} = T_0 + 2T_1 + R_0\cos 4\Phi_0 + 4R_1\cos 2\Phi_1 .
+\]
+
+\begin{idee}[Pourquoi c'est génial]
+\begin{enumerate}
+  \item $T_0, T_1, R_0, R_1$ \textbf{ne changent pas quand on tourne les
+        axes} (ce sont des \emph{invariants}). Tourner les axes de $\theta$
+        revient juste à faire $\Phi_0 \to \Phi_0-\theta$ et
+        $\Phi_1 \to \Phi_1-\theta$ (slide 37).
+  \item \textbf{Les symétries se lisent directement} sur les paramètres
+        (tableau ci-dessous).
+\end{enumerate}
+\end{idee}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l l X}
+\toprule
+Symétrie (slide 38) & Condition polaire & Forme du diagramme polaire\\
+\midrule
+Orthotropie ordinaire & $\Phi_0-\Phi_1 = K\,\pi/4$, $K\in\{0,1\}$ & \og os\fg{} ou \og nœud papillon\fg\\
+\textbf{Orthotropie $R_0$} & $\mathbf{R_0 = 0}$ & \og cacahuète\fg{} (2 lobes)\\
+\textbf{Symétrie du carré} & $\mathbf{R_1 = 0}$ & \og carré arrondi\fg{} (4 lobes)\\
+Isotropie & $R_0 = R_1 = 0$ & cercle parfait\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Le \textbf{diagramme polaire} trace la rigidité $L_{11}(\theta)$ dans chaque
+direction $\theta$ sur un graphique en rond. C'est ce que fait
+\code{plots.py}.
+
+\subsection{Le stratifié en polaire : des sommes de flèches}
+C'est \textbf{le} résultat à comprendre (slides 41--42). Pour des plis
+identiques :
+\begin{itemize}
+  \item $T_0$ et $T_1$ de $\As$ et $\Ds$ \textbf{sont ceux du pli} : les
+        angles ne les changent pas, ils ne servent à rien dans
+        l'optimisation ;
+  \item $\Bs$ et $\Cm$ ont $T_0 = T_1 = 0$ ;
+  \item tout ce qu'on contrôle, ce sont les $R$ et les $\Phi$ :
+\end{itemize}
+\begin{align*}
+\As:\quad R_0^{A^*} e^{4i\Phi_0^{A^*}} &= \frac{1}{n}\,R_0\,e^{4i\Phi_0}\sum_{k=1}^{n} e^{4i\delta_k},
+&
+R_1^{A^*} e^{2i\Phi_1^{A^*}} &= \frac{1}{n}\,R_1\,e^{2i\Phi_1}\sum_{k=1}^{n} e^{2i\delta_k},\\
+\Bs:\quad R_0^{B^*} e^{4i\Phi_0^{B^*}} &= \frac{1}{n^2}\,R_0\,e^{4i\Phi_0}\sum_{k=1}^{n} b_k\,e^{4i\delta_k},
+&
+R_1^{B^*} e^{2i\Phi_1^{B^*}} &= \frac{1}{n^2}\,R_1\,e^{2i\Phi_1}\sum_{k=1}^{n} b_k\,e^{2i\delta_k},\\
+\Ds:\quad R_0^{D^*} e^{4i\Phi_0^{D^*}} &= \frac{1}{n^3}\,R_0\,e^{4i\Phi_0}\sum_{k=1}^{n} d_k\,e^{4i\delta_k},
+&
+R_1^{D^*} e^{2i\Phi_1^{D^*}} &= \frac{1}{n^3}\,R_1\,e^{2i\Phi_1}\sum_{k=1}^{n} d_k\,e^{2i\delta_k},
+\end{align*}
+avec les poids de position (déduits de $\Bs = 2\mathbf{B}/h^2$ et
+$\Ds = 12\mathbf{D}/h^3$) :
+\[
+b_k = 2k - n - 1,
+\qquad
+d_k = 12\,k\,(k-n-1) + 4 + 3n(n+2).
+\]
+Les $R$, $\Phi$ sans exposant sont ceux du pli (ici $\Phi_0=\Phi_1=0$).
+
+\begin{idee}[Image mentale : additionner des flèches]
+Chaque pli est une \textbf{flèche} de longueur 1 qui pointe dans la
+direction $4\delta_k$ (pour $R_0$) ou $2\delta_k$ (pour $R_1$). On additionne
+les flèches bout à bout. \textbf{Si elles se referment sur elles-mêmes, la
+somme est nulle et $R = 0$.}
+\end{idee}
+
+\begin{center}
+\begin{tikzpicture}[>={Stealth[length=2.5mm]},thick]
+  % [0/90] for R1: angles 2*delta = 0 and 180
+  \begin{scope}
+    \draw[->,blue!70!black] (0,0) -- (1.6,0);
+    \draw[->,red!70!black] (1.6,0.08) -- (0,0.08);
+    \node[below,align=center] at (0.8,-0.5) {\small $[0/90]$, flèches $2\delta$ :\\ \small $0^\circ$ et $180^\circ$ $\Rightarrow R_1^{A^*}=0$};
+  \end{scope}
+  % [0/45] for R0: angles 4*delta = 0 and 180
+  \begin{scope}[xshift=5cm]
+    \draw[->,blue!70!black] (0,0) -- (1.6,0);
+    \draw[->,red!70!black] (1.6,0.08) -- (0,0.08);
+    \node[below,align=center] at (0.8,-0.5) {\small $[0/45]$, flèches $4\delta$ :\\ \small $0^\circ$ et $180^\circ$ $\Rightarrow R_0^{A^*}=0$};
+  \end{scope}
+  % [0/60/-60]: 3 arrows at 120 deg forming a triangle
+  \begin{scope}[xshift=10cm]
+    \draw[->,blue!70!black] (0,0) -- (1.6,0);
+    \draw[->,red!70!black] (1.6,0) -- ++(120:1.6);
+    \draw[->,green!50!black] ($(1.6,0)+(120:1.6)$) -- (0,0);
+    \node[below,align=center] at (0.8,-0.5) {\small $[0/60/{-60}]$ : triangle fermé\\ \small $\Rightarrow R_0^{A^*}=R_1^{A^*}=0$ (isotrope)};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+Pour $\Bs$ et $\Ds$, chaque flèche est en plus multipliée par son poids
+$b_k$ ou $d_k$ (négatif en bas pour $b_k$, grand à l'extérieur pour $d_k$).
+C'est pour ça qu'il est difficile d'annuler plusieurs choses à la fois : les
+\textbf{mêmes} 20 angles doivent refermer plusieurs sommes de flèches avec
+des poids différents.
+
+\subsection{La norme d'un tenseur}
+Pour mesurer la \og taille\fg{} d'un tenseur (slide 45) :
+\[
+\|\mathbf{L}\| = \sqrt{T_0^2 + 2\,T_1^2 + R_0^2 + 4\,R_1^2}.
+\]
+Pour notre pli, $\|\Q\| \approx 57\,400$ MPa.
+
+% =============================================================================
+\section{Ce que doit faire notre plaque (groupe 1)}
+% =============================================================================
+\emph{Fichier \code{fitness.py} (P2 slides 44 à 47), données dans
+\code{config.py}.}
+
+L'énoncé demande trois symétries. Chacune devient un \textbf{objectif
+partiel} $\Phi_i \ge 0$ qui vaut \textbf{0 quand la symétrie est
+parfaitement atteinte} :
+\begin{center}
+\begin{tabularx}{\linewidth}{X l l c}
+\toprule
+Symétrie demandée & Condition & Objectif & Formule\\
+\midrule
+Découplage & $\Bs = 0$ & $\Phi_1$ & $\left(\dfrac{\|\Bs\|}{\|\Q\|}\right)^{2}$\\[2.2ex]
+Orthotropie $R_0$ en membrane & $R_0^{A^*}=0$ & $\Phi_4$ & $\left(\dfrac{R_0^{A^*}}{R_0}\right)^{2}$\\[2.2ex]
+\og Orthotropie $R_1$\fg{} en flexion & $R_1^{D^*}=0$ & $\Phi_9$ & $\left(\dfrac{R_1^{D^*}}{R_1}\right)^{2}$\\[1.5ex]
+\bottomrule
+\end{tabularx}
+\end{center}
+On divise par une grandeur du pli pour que chaque $\Phi_i$ soit \textbf{sans
+unité} et de l'ordre de 1 au pire : on peut alors les additionner. La
+\textbf{fonction de coût} est la somme (slide 44) :
+\[
+\boxed{\;\Phi(\boldsymbol\delta) = \Phi_1(\boldsymbol\delta) + \Phi_4(\boldsymbol\delta) + \Phi_9(\boldsymbol\delta),
+\qquad \min \Phi = 0\;}
+\qquad \boldsymbol\delta = (\delta_1, \dots, \delta_{20}).
+\]
+Toute la difficulté : $\Phi$ est très \textbf{non convexe} en fonction des
+angles (des milliers de creux locaux). Les méthodes classiques (descente de
+gradient) y restent coincées, d'où l'algorithme génétique.
+
+\begin{attention}[Deux points tranchés par le groupe]
+\textbf{1. $\Phi_1$ et la slide 51.} Avec la formule du cours, l'exemple de
+la slide 51 ($[9/0/18/{-4}/14/5]$, 6 plis T300/5208) donne
+$\Phi = 9{,}96\times10^{-8}$. La slide affiche $3{,}5873\times10^{-6}$,
+exactement $n^2 = 36$ fois plus : la slide utilise visiblement $n\,\Bs$ au
+lieu de $\Bs$. On garde la formule du cours et on considère la valeur de la
+slide comme une erreur d'application numérique.
+
+\textbf{2. \og Orthotropie $R_1$\fg} n'existe pas dans le cours. On l'a lue
+comme $R_1^{D^*}=0$, que le cours appelle \og symétrie du carré\fg{}
+($\Phi_9$). L'autre lecture serait une coquille pour l'orthotropie $R_0$
+($\Phi_8$). À confirmer avec le prof : c'est une ligne dans
+\code{config.py}.
+\end{attention}
+
+\begin{attention}[Pièges évités (à citer dans le rapport)]
+\begin{itemize}
+  \item Quand $R_0 = 0$ ou $R_1 = 0$, l'angle $\Phi_0$ ou $\Phi_1$
+        \textbf{n'a plus de sens} (une flèche de longueur nulle n'a pas de
+        direction). On ne combine donc jamais un objectif sur les angles
+        ($\Phi_3$, $\Phi_7$) avec un objectif qui annule un $R$ sur le même
+        tenseur ; \code{check\_objectives} refuse ces combinaisons.
+  \item $\Phi_0$ est défini à $\pi/2$ près et $\Phi_1$ à $\pi$ près : pour
+        $\Phi_3$ et $\Phi_7$, l'écart $\Phi_0-\Phi_1$ est ramené dans le bon
+        intervalle avant d'être comparé à $K\pi/4$ (\code{wrap\_angle}).
+\end{itemize}
+Notre groupe n'utilise aucun objectif d'angle : pas de problème pour nous.
+\end{attention}
+
+% =============================================================================
+\section{L'algorithme génétique (AG)}
+% =============================================================================
+\emph{Fichier \code{ga.py} (P1 slide 48, P2 slide 50).}
+
+\subsection{L'idée}
+On imite Darwin : une \textbf{population} de solutions ; les meilleures ont
+plus d'\textbf{enfants} ; les enfants \textbf{mélangent} les caractères de
+leurs parents ; de petites \textbf{mutations} apportent de la nouveauté. Au
+fil des générations, la population s'améliore.
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+Biologie & Notre problème\\
+\midrule
+individu & un stratifié (20 angles)\\
+gène & un angle de pli\\
+génotype (ADN) & les 160 bits qui codent les 20 angles\\
+phénotype & les 20 angles en degrés\\
+adaptation au milieu & fitness, calculée à partir du coût $\Phi$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Le codage binaire et les 76 codes en trop}
+Chaque angle est stocké sur \textbf{8 bits} : $2^7 = 128$ valeurs ne
+suffisent pas pour 180 angles, $2^8 = 256$ suffisent. Un individu fait donc
+$20\times8 = 160$ bits. Mais $256 - 180 = 76$ codes ne correspondent à aucun
+angle. Deux solutions :
+\begin{itemize}
+  \item \textbf{modulo} ($\text{code} \bmod 180$) : simple, mais les angles
+        $-89^\circ$ à $-14^\circ$ auraient deux codes chacun, donc
+        \textbf{deux fois plus de chances} d'apparaître : recherche biaisée ;
+  \item \textbf{rejet} (notre choix) :
+        \[
+        \delta = -89^\circ + \text{code},\qquad \text{code}\in\{0,\dots,179\},
+        \]
+        et les codes 180 à 255 sont interdits. La population de départ n'a
+        que des codes valides ; si un croisement ou une mutation crée un code
+        interdit, ce gène est \textbf{rejeté} et l'enfant garde le gène de
+        son parent. Chaque angle a la même chance ($1/180$). Sur un calcul
+        complet, environ 2\,500 gènes sont rejetés en 500 générations
+        (colonne \code{rejected\_genes} du CSV).
+\end{itemize}
+
+\subsection{Les étapes}
+Les étapes sont décrites une par une, puis résumées par le schéma de la
+boucle à la fin de la section.
+
+\paragraph{1. Population initiale.} $N = 500$ stratifiés tirés au hasard.
+
+\paragraph{2. Évaluation.} Pour chaque individu : décoder les angles,
+calculer $\As, \Bs, \Ds$, leurs paramètres polaires, puis
+$\Phi = \Phi_1 + \Phi_4 + \Phi_9$.
+
+\paragraph{3. Fitness} (énoncé §2.a, avec $p = 1$) :
+\[
+f_i = \left(1 - \frac{\Phi_i - \min_j \Phi_j}{\max_j \Phi_j - \min_j \Phi_j}\right)^{p}.
+\]
+Le meilleur de la génération a $f = 1$, le pire $f = 0$. Exemple avec trois
+individus de coûts $0{,}01$ ; $0{,}05$ ; $0{,}11$ : fitness $1$ ; $0{,}6$ ;
+$0$.
+
+\paragraph{4. Sélection par roulette biaisée.} Chaque individu reçoit une
+part de roue proportionnelle à sa fitness :
+$P_i = f_i / \sum_j f_j$. On tourne la roue $N$ fois pour choisir $N$
+parents (un bon individu peut sortir plusieurs fois). Dans l'exemple :
+$1/1{,}6 = 62{,}5\,\%$, $0{,}6/1{,}6 = 37{,}5\,\%$ et $0\,\%$.
+
+\paragraph{5. Croisement} (probabilité $p_c = 0{,}85$). Les parents vont par
+deux ; on coupe les deux chaînes de bits au même endroit et on échange les
+fins :
+\[
+\begin{array}{lcl}
+\text{parent 1 : } \texttt{10110|010} & \longrightarrow & \text{enfant 1 : } \texttt{10110|111}\\
+\text{parent 2 : } \texttt{01100|111} & \longrightarrow & \text{enfant 2 : } \texttt{01100|010}
+\end{array}
+\]
+Dans 15\,\% des cas, pas de croisement : les enfants sont des copies.
+
+\paragraph{6. Mutation} (probabilité $p_m = 1/N$ par gène, comme dans le
+cours). Chaque gène a une petite chance de voir un de ses 8 bits inversé
+($0 \leftrightarrow 1$). Ça évite que toute la population devienne identique
+et reste coincée.
+
+\paragraph{7. Élitisme.} Le meilleur individu de la génération précédente
+remplace le pire enfant : la meilleure solution trouvée \textbf{n'est jamais
+perdue}. C'est pour ça que la courbe du meilleur coût ne remonte jamais.
+
+\paragraph{8. Arrêt} après $N_{\text{gen}} = 500$ générations.
+
+\paragraph{Résumé de la boucle.}
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.55cm,
+  box/.style={rectangle,draw,rounded corners,fill=blue!6,minimum width=6.4cm,minimum height=0.75cm,align=center,font=\small},
+  dec/.style={diamond,draw,fill=orange!10,aspect=2.6,inner sep=1pt,font=\small,align=center},
+  >={Stealth}]
+  \node[box,fill=green!8] (init) {Population initiale aléatoire ($N$ individus)};
+  \node[box,below=of init] (eval) {Évaluation : coût $\Phi$ de chaque individu};
+  \node[box,below=of eval] (fit) {Fitness $f_i \in [0,1]$};
+  \node[box,below=of fit] (sel) {Sélection par roulette $\rightarrow$ parents};
+  \node[box,below=of sel] (cross) {Croisement (probabilité $p_c$) $\rightarrow$ enfants};
+  \node[box,below=of cross] (mut) {Mutation (probabilité $p_m$ par gène)};
+  \node[box,below=of mut] (rej) {Rejet des codes invalides};
+  \node[box,below=of rej] (eli) {Élitisme : le meilleur parent remplace le pire enfant};
+  \node[dec,below=0.7cm of eli] (stop) {génération\\$= N_{\text{gen}}$ ?};
+  \node[box,fill=green!8,below=0.7cm of stop] (end) {Meilleur individu $\rightarrow$ résultats};
+  \foreach \a/\b in {init/eval,eval/fit,fit/sel,sel/cross,cross/mut,mut/rej,rej/eli,eli/stop}
+    \draw[->] (\a) -- (\b);
+  \draw[->] (stop) -- node[right,font=\small]{oui} (end);
+  \draw[->] (stop.east) -- node[above,font=\small]{non} ++(2.6,0) |- (eval.east);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Les paramètres (\code{config.py})}
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+Paramètre & Valeur & Rôle\\
+\midrule
+$N$ & 500 & taille de la population\\
+$N_{\text{gen}}$ & 500 & nombre de générations\\
+$p_c$ & 0,85 & probabilité de croisement\\
+$p_m$ & $1/N = 0{,}002$ & probabilité de mutation d'un gène\\
+$p$ & 1 & pression de sélection (exposant de la fitness)\\
+seed & 1 & graine du hasard : même graine $\Rightarrow$ même résultat\\
+\bottomrule
+\end{tabular}
+\end{center}
+Ce sont les valeurs de la slide 50 du cours.
+
+% =============================================================================
+\section{Le code, fichier par fichier}
+% =============================================================================
+\begin{center}
+\begin{tabularx}{\linewidth}{l X l}
+\toprule
+Fichier & Contenu & Cours\\
+\midrule
+\code{config.py} & toutes les données : pli, groupe, objectifs, paramètres AG & énoncé §1, P2 sl.~50\\
+\code{laminate.py} & $\Sm$, $\Q$, $\Q(\delta)$, $\mathbf{A},\mathbf{B},\mathbf{D}$, $\As,\Bs,\Ds,\Cm$ & P2 sl.~27, 41\\
+\code{polar.py} & $T_0,T_1,R_0,R_1,\Phi_0,\Phi_1$, norme, sommes polaires directes & P2 sl.~35--42, 45\\
+\code{fitness.py} & les 11 objectifs partiels, le coût $\Phi$, la fitness & P2 sl.~44--47\\
+\code{ga.py} & codage, population, roulette, croisement, mutation, rejet, élitisme & P1 sl.~48, P2 sl.~50\\
+\code{plots.py} & courbe de convergence, diagrammes polaires & énoncé §3\\
+\code{main.py} & enchaîne tout et écrit \code{results/} & ---\\
+\code{tests/} & vérifications automatiques & P2 sl.~49, 51\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Chaîne d'appel lors d'un calcul.}
+\begin{center}
+\begin{tikzpicture}[
+  f/.style={rectangle,draw,fill=gray!6,font=\small\ttfamily,anchor=west,inner sep=3pt},
+  n/.style={font=\small,anchor=west,text=gray!40!black},
+  >={Stealth}]
+  % Each call is a box; indentation = depth of the call.
+  % Arrows leave from the left part of the caller and enter the callee.
+  \node[f] (main) at (0,0)     {main.py};
+  \node[f] (ply)  at (1,-0.8)  {laminate.ply\_stiffness};
+  \node[f] (ga)   at (1,-1.6)  {ga.run\_ga};
+  \node[f] (cost) at (2,-2.4)  {fitness.cost};
+  \node[f] (lam)  at (3,-3.2)  {laminate.laminate\_matrices};
+  \node[f] (pol)  at (3,-4.0)  {polar.polar\_parameters};
+  \node[f] (obj)  at (3,-4.8)  {fitness.partial\_objectives};
+  \node[f] (out)  at (1,-5.6)  {main: CSV, best\_laminate.txt, plots};
+
+  \node[n] at (8.6,-0.8) {$\Sm$, $\Q$ du pli};
+  \node[n] at (8.6,-1.6) {boucle sur les générations};
+  \node[n] at (8.6,-2.4) {pour chaque individu};
+  \node[n] at (8.6,-3.2) {$\As,\Bs,\Ds,\Cm$};
+  \node[n] at (8.6,-4.0) {$T_0,T_1,R_0,R_1,\Phi_0,\Phi_1$};
+  \node[n] at (8.6,-4.8) {$\Phi_1,\dots,\Phi_{11}$ (on garde 1, 4, 9)};
+  \node[n] at (8.6,-5.6) {à la fin du calcul};
+
+  \draw[->] ([xshift=4mm]main.south west) |- (ply.west);
+  \draw[->] ([xshift=4mm]main.south west) |- (ga.west);
+  \draw[->] ([xshift=4mm]main.south west) |- (out.west);
+  \draw[->] ([xshift=4mm]ga.south west)   |- (cost.west);
+  \draw[->] ([xshift=4mm]cost.south west) |- (lam.west);
+  \draw[->] ([xshift=4mm]cost.south west) |- (pol.west);
+  \draw[->] ([xshift=4mm]cost.south west) |- (obj.west);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Comment on sait que la mécanique est juste.} Les tests
+(\code{tests/test\_mechanics.py}) comparent le code aux valeurs du cours :
+\begin{itemize}
+  \item pli T300/5208 (slide 49) : $T_0 = 26\,880$, $T_1 = 24\,744$,
+        $R_0 = 19\,710$, $R_1 = 21\,433$ MPa : \textbf{retrouvés} ;
+  \item stratifié $[9/0/18/{-4}/14/5]$ (slide 51) : tous les paramètres de
+        $\As, \Bs, \Ds$ \textbf{retrouvés à 4 décimales}, avec
+        $\Phi_0 = \Phi_1 = 7^\circ$ ;
+  \item contrôle croisé : la voie cartésienne (matrices) et la voie polaire
+        (sommes de flèches) donnent les mêmes nombres sur des empilements
+        tirés au hasard.
+\end{itemize}
+Pour lancer les tests puis le calcul (depuis le dossier
+\code{Claude Momon's}) :
+\begin{center}
+\code{../.venv/Scripts/python -m pytest}\qquad
+\code{../.venv/Scripts/python main.py}
+\end{center}
+
+% =============================================================================
+\section{Lire les résultats}
+% =============================================================================
+Un calcul complet prend environ 35 s. Résultat avec la graine 1 :
+\[
+[22/{-41}/80/{-15}/{-89}/42/{-61}/61/{-74}/83/{-72}/{-38}/67/{-52}/43/84/5/38/{-25}/{-82}]
+\]
+\[
+\Phi = 4{,}1\times10^{-5}
+\qquad(\Phi_1 = 2{,}5\times10^{-5},\ \Phi_4 = 6{,}3\times10^{-6},\ \Phi_9 = 9{,}5\times10^{-6}).
+\]
+Concrètement : $R_0^{A^*} = 44$ MPa au lieu de 17\,700 pour le pli seul
+(divisé par 400) et $R_1^{D^*} = 59$ MPa au lieu de 19\,000. C'est un très
+bon \textbf{pseudo-optimum} : pas exactement 0 (impossible avec des angles
+entiers), mais très proche.
+
+\begin{itemize}
+  \item \code{convergence.*} : en haut, le meilleur coût (en escalier, il ne
+        remonte jamais grâce à l'élitisme), la moyenne et le pire, en échelle
+        logarithmique ; en bas, l'écart-type : grand au début (population
+        variée), petit à la fin (population regroupée).
+  \item \code{polar\_diagrams.*} : la rigidité dans chaque direction. Le pli
+        $\Q$ fait un \og 8\fg{} allongé à $0^\circ$ ; $\As$ a la forme de
+        cacahuète de l'orthotropie $R_0$ ; $\Ds$ ressemble à un carré arrondi
+        ; $\Bs$ est près de 100 fois plus petit que $\As$ (il a sa propre
+        échelle, en MPa).
+  \item \code{ga\_statistics.csv} : une ligne par génération (min, moyenne,
+        médiane, max, écart-type, gènes rejetés, meilleur empilement).
+        S'ouvre directement dans Excel.
+  \item \code{best\_laminate.txt} : l'empilement, les $\Phi_i$, tous les
+        paramètres polaires et les matrices.
+\end{itemize}
+
+% =============================================================================
+\section{Ce qu'il reste à faire pour le rendu}
+% =============================================================================
+\begin{enumerate}
+  \item \textbf{Confirmer $\Phi_9$ ou $\Phi_8$} auprès du prof
+        (\og orthotropie $R_1$\fg).
+  \item \textbf{Plusieurs calculs} avec des graines différentes
+        (\code{--seed 2}, \code{3}\ldots) et éventuellement le croisement en
+        deux points (\code{--crossover two\_point}), pour montrer que le
+        résultat est robuste.
+  \item \textbf{Le rapport} (énoncé §3) : théorie (sections 2 à 5 de ce
+        document), méthodologie (sections 6 et 7, choix du rejet, décision
+        sur $\Phi_1$), résultats (section 8 et figures).
+  \item \textbf{Le diagramme de flux} du code : les deux schémas des
+        sections 6.3 et 7 en sont une bonne base.
+\end{enumerate}
+
+% =============================================================================
+\section*{Glossaire}
+\addcontentsline{toc}{section}{Glossaire}
+% =============================================================================
+\begin{description}[style=nextline,leftmargin=1.2em,itemsep=0.1em]
+  \item[Anisotrope] propriétés différentes selon la direction.
+  \item[Orthotrope] anisotrope avec deux directions de symétrie perpendiculaires.
+  \item[Isotrope] identique dans toutes les directions (comme l'acier).
+  \item[Contraintes planes] on néglige ce qui se passe dans l'épaisseur.
+  \item[Invariant] grandeur qui ne change pas quand on tourne les axes.
+  \item[Couplage membrane/flexion] tirer fait courber ($\mathbf{B}\neq0$).
+  \item[Quasi-homogène] $\Bs = 0$ et $\Cm = 0$ (même comportement partout).
+  \item[Fonction de coût] nombre à minimiser ; ici 0 = objectif atteint.
+  \item[Fitness] note d'adaptation entre 0 et 1 ; plus grand = meilleur.
+  \item[Élitisme] on garde toujours le meilleur individu.
+  \item[Pseudo-optimum] très bonne solution, pas forcément la meilleure absolue.
+\end{description}
+
+\end{document}
