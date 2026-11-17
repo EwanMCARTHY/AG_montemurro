@@ -2,23 +2,24 @@
 ===============================================================================
 FIGURES (EVCSP - M. Montemurro)
 ===============================================================================
-Produces the figures asked by the statement (section 3.1.c):
-1. convergence    : best / mean / worst cost per generation, and the spread
-                    (standard deviation) of the population.
-2. polar_diagrams : polar diagrams of the first component L_1111(theta) of
-                    the ply Q, of the membrane A*, coupling B* and bending D*
-                    stiffness (as on P2 slide 52).
+Produit les figures demandées par l'énoncé (section 3.1.c) :
+1. convergence    : coût du meilleur individu, coût moyen et coût du pire
+                    à chaque génération, et dispersion (écart-type) de la
+                    population.
+2. polar_diagrams : diagrammes polaires de la première composante
+                    L_1111(theta) du pli Q, de la membrane A*, du couplage B*
+                    et de la flexion D* (comme sur la slide 52 de P2).
 
-Each figure is saved three times: SVG and PDF (vector formats, for the
-report) and PNG (300 dpi, for a quick look).
-Only NumPy and Matplotlib are used.
+Chaque figure est enregistrée trois fois : SVG et PDF (formats vectoriels,
+pour le rapport) et PNG (300 dpi, pour un aperçu rapide).
+Seuls NumPy et Matplotlib sont utilisés.
 ===============================================================================
 """
 
 import os
 
 import matplotlib
-matplotlib.use("Agg")           # draw into files, no window needed
+matplotlib.use("Agg")           # dessine dans des fichiers, sans ouvrir de fenêtre
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -26,18 +27,18 @@ import polar as pol
 
 
 # =============================================================================
-# 0. SAVING HELPER
+# 0. ENREGISTREMENT
 # =============================================================================
 def _save(fig, out_dir, name):
     """
-    Saves the figure as name.svg, name.pdf and name.png in out_dir, closes it
-    (to free memory) and returns the list of written paths.
+    Enregistre la figure en name.svg, name.pdf et name.png dans out_dir, la
+    ferme (pour libérer la mémoire) et renvoie la liste des fichiers écrits.
     """
     os.makedirs(out_dir, exist_ok=True)
     paths = []
     for ext in ("svg", "pdf", "png"):
         path = os.path.join(out_dir, f"{name}.{ext}")
-        # dpi only matters for the PNG; SVG and PDF stay vector graphics
+        # dpi ne compte que pour le PNG ; SVG et PDF restent vectoriels
         fig.savefig(path, dpi=300, bbox_inches="tight")
         paths.append(path)
     plt.close(fig)
@@ -45,43 +46,42 @@ def _save(fig, out_dir, name):
 
 
 # =============================================================================
-# 1. CONVERGENCE CURVE AND POPULATION STATISTICS
+# 1. COURBE DE CONVERGENCE ET STATISTIQUES DE LA POPULATION
 # =============================================================================
 def plot_convergence(history, out_dir):
     """
-    history : list of dicts returned by ga.run_ga, one per generation, with
-              the keys "generation", "min", "mean", "max", "std".
+    history : liste de dictionnaires renvoyée par ga.run_ga, un par
+              génération, avec les clés "generation", "min", "mean", "max", "std".
     """
-    # One NumPy array per statistic, easy to plot
+    # Un tableau NumPy par statistique, facile à tracer
     gens = np.array([h["generation"] for h in history])
     c_min = np.array([h["min"] for h in history])
     c_mean = np.array([h["mean"] for h in history])
     c_max = np.array([h["max"] for h in history])
     c_std = np.array([h["std"] for h in history])
 
-    # Two plots stacked vertically, sharing the generation axis
+    # Deux graphes l'un sous l'autre, avec le même axe des générations
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
 
-    # --- Top: best, mean and worst cost ---
-    # Logarithmic y axis: the cost drops by several orders of magnitude, a
-    # linear axis would squash the end of the convergence onto 0.
-    ax1.semilogy(gens, c_min, label=r"Best ($\Phi_{\min}$)", color="#1f77b4", linewidth=2.0)
-    ax1.semilogy(gens, c_mean, label=r"Mean ($\Phi_{\mathrm{mean}}$)", color="#ff7f0e",
+    # --- En haut : meilleur, moyen et pire coût ---
+    # Axe y logarithmique : le coût baisse de plusieurs ordres de grandeur,
+    # un axe linéaire écraserait la fin de la convergence sur 0.
+    ax1.semilogy(gens, c_min, label=r"Meilleur ($\Phi_{\min}$)", color="#1f77b4", linewidth=2.0)
+    ax1.semilogy(gens, c_mean, label=r"Moyenne ($\Phi_{\mathrm{moy}}$)", color="#ff7f0e",
                  linestyle="--", linewidth=1.5)
-    ax1.semilogy(gens, c_max, label=r"Worst ($\Phi_{\max}$)", color="#7f7f7f",
+    ax1.semilogy(gens, c_max, label=r"Pire ($\Phi_{\max}$)", color="#7f7f7f",
                  linestyle=":", linewidth=1.2)
-    ax1.set_ylabel(r"Cost function $\Phi$ (log scale)")
-    ax1.set_title("Convergence of the genetic algorithm")
+    ax1.set_ylabel(r"Fonction de coût $\Phi$ (échelle log)")
+    ax1.set_title("Convergence de l'algorithme génétique")
     ax1.grid(True, which="both", linestyle=":", alpha=0.6)
     ax1.legend(loc="upper right")
 
-    # --- Bottom: spread of the population ---
-    # A large standard deviation means a varied population; a small one
-    # means that all individuals gathered in the same region.
-    ax2.plot(gens, c_std, label=r"Standard deviation ($\sigma_\Phi$)", color="#2ca02c",
-             linewidth=1.5)
-    ax2.set_xlabel("Generation")
-    ax2.set_ylabel(r"Standard deviation of $\Phi$")
+    # --- En bas : dispersion de la population ---
+    # Un grand écart-type = population variée ; un petit = tous les individus
+    # se sont regroupés dans la même zone.
+    ax2.plot(gens, c_std, label=r"Écart-type ($\sigma_\Phi$)", color="#2ca02c", linewidth=1.5)
+    ax2.set_xlabel("Génération")
+    ax2.set_ylabel(r"Écart-type de $\Phi$")
     ax2.grid(True, linestyle=":", alpha=0.6)
     ax2.legend(loc="upper right")
 
@@ -90,14 +90,14 @@ def plot_convergence(history, out_dir):
 
 
 # =============================================================================
-# 2. POLAR DIAGRAMS OF THE STIFFNESS MATRICES (P2 slides 37-38 and 52)
+# 2. DIAGRAMMES POLAIRES DES MATRICES DE RIGIDITÉ (P2 slides 37-38 et 52)
 # =============================================================================
 def _component_1111(L, thetas_rad):
     """
-    First component L_1111(theta) [MPa] of the tensor L in a frame rotated by
-    theta. With the polar method a rotation of the frame simply subtracts
-    theta from Phi0 and Phi1 (P2 slide 37); pol.stiffness_from_polar does
-    that, and its term [0, 0] is L_1111(theta).
+    Première composante L_1111(theta) [MPa] du tenseur L dans un repère tourné
+    de theta. Avec la méthode polaire, tourner le repère revient simplement à
+    retrancher theta à Phi0 et Phi1 (P2 slide 37) : c'est ce que fait
+    pol.stiffness_from_polar, dont la case [0, 0] est L_1111(theta).
     """
     pp = pol.polar_parameters(L)
     vals = np.array([pol.stiffness_from_polar(pp, t)[0, 0] for t in thetas_rad])
@@ -106,14 +106,14 @@ def _component_1111(L, thetas_rad):
 
 def plot_polar_diagrams(Q, A_star, B_star, D_star, out_dir):
     """
-    Four polar diagrams side by side:
-    - Q  : the ply (reference, ordinary orthotropy)
-    - A* : membrane, group 1 target R0 = 0 (R0-orthotropy)
-    - B* : coupling, group 1 target B* = 0 (curve shrinks to the centre)
-    - D* : bending, group 1 target R1 = 0 (square symmetry)
-    B* has its own radial scale, otherwise it would be invisible.
+    Quatre diagrammes polaires côte à côte :
+    - Q  : le pli (référence, orthotropie ordinaire)
+    - A* : membrane, cible du groupe 1 : R0 = 0 (orthotropie R0)
+    - B* : couplage, cible du groupe 1 : B* = 0 (la courbe se resserre au centre)
+    - D* : flexion, cible du groupe 1 : R1 = 0 (symétrie du carré)
+    B* a sa propre échelle radiale, sinon il serait invisible.
     """
-    # Full circle, 1 deg step, so that each curve is closed
+    # Tour complet au pas de 1°, pour que chaque courbe soit fermée
     thetas = np.linspace(0.0, 2.0 * np.pi, 361)
 
     q_vals, _ = _component_1111(Q, thetas)
@@ -123,21 +123,21 @@ def plot_polar_diagrams(Q, A_star, B_star, D_star, out_dir):
 
     fig, axes = plt.subplots(1, 4, figsize=(18, 4.8), subplot_kw={"projection": "polar"})
 
-    # (axis, values, unit label, colour, title). Q, A*, D* in GPa; B* in MPa
-    # because it is several orders of magnitude smaller.
+    # (axe, valeurs, unité, couleur, titre). Q, A*, D* en GPa ; B* en MPa car
+    # il est plusieurs ordres de grandeur plus petit.
     panels = [
-        (axes[0], q_vals / 1000.0, "GPa", "#1f77b4", "Ply $Q$\n(ordinary orthotropy)"),
+        (axes[0], q_vals / 1000.0, "GPa", "#1f77b4", "Pli $Q$\n(orthotropie ordinaire)"),
         (axes[1], a_vals / 1000.0, "GPa", "#2ca02c",
-         f"Membrane $A^*$\n($R_0$-orthotropy, $R_0$ = {pp_A['R0']:.1f} MPa)"),
+         f"Membrane $A^*$\n(orthotropie $R_0$, $R_0$ = {pp_A['R0']:.1f} MPa)"),
         (axes[2], b_vals, "MPa", "#9467bd",
-         f"Coupling $B^*$\n(target 0, $R_0$ = {pp_B['R0']:.2f}, $R_1$ = {pp_B['R1']:.2f} MPa)"),
+         f"Couplage $B^*$\n(cible 0, $R_0$ = {pp_B['R0']:.2f}, $R_1$ = {pp_B['R1']:.2f} MPa)"),
         (axes[3], d_vals / 1000.0, "GPa", "#d62728",
-         f"Bending $D^*$\n(square symmetry, $R_1$ = {pp_D['R1']:.1f} MPa)"),
+         f"Flexion $D^*$\n(symétrie du carré, $R_1$ = {pp_D['R1']:.1f} MPa)"),
     ]
 
     for ax, vals, unit, color, title in panels:
-        # A polar plot cannot show negative radii (B*_11 can be negative):
-        # we plot the absolute value and say so in the label.
+        # Un diagramme polaire ne peut pas afficher de rayon négatif (B*_11
+        # peut être négatif) : on trace la valeur absolue et on l'indique.
         ax.plot(thetas, np.abs(vals), color=color, linewidth=2.0)
         ax.set_title(title, pad=14, fontweight="bold")
         ax.set_xlabel(f"|L_1111| ({unit})")

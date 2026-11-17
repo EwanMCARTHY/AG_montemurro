@@ -1,5 +1,5 @@
 import os
 import sys
 
-# Make the project modules importable from the tests folder
+# Permet d'importer les modules du projet (laminate, polar...) depuis le dossier tests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
