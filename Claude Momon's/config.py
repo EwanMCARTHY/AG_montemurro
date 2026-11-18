@@ -15,7 +15,9 @@ T_PLY = 0.125      # épaisseur d'un pli [mm]
 
 # ---------------------------------------------------------------------------
 # Données du groupe (énoncé, tableau de la section 1)
-# Groupe 1 : découplage, orthotropie R0 en membrane, « orthotropie R1 » en flexion
+# Groupe 1 : découplage, orthotropie R0 en membrane, symétrie du carré
+# (R1 = 0) en flexion. L'énoncé dit « orthotropie R1 » : c'est une coquille,
+# confirmée par M. Montemurro (mail du 18/11/2026).
 # ---------------------------------------------------------------------------
 GROUP = 1
 N_PLIES = 20
@@ -24,9 +26,7 @@ N_PLIES = 20
 # (P2 slides 45-47) :
 #   1 : découplage, B* = 0
 #   4 : orthotropie R0 de la membrane, R0(A*) = 0
-#   9 : R1(D*) = 0 (appelé « symétrie du carré » sur la slide 47)
-# Si le prof confirme que « orthotropie R1 » est une coquille pour
-# « orthotropie R0 » en flexion, remplacer 9 par 8 : R0(D*) = 0.
+#   9 : symétrie du carré en flexion, R1(D*) = 0 (slide 47)
 OBJECTIVES = [1, 4, 9]
 
 # Valeurs de K utilisées seulement par les objectifs d'orthotropie ordinaire

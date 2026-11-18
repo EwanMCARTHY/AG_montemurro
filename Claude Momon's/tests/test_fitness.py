@@ -68,4 +68,3 @@ def test_incompatible_objectives_rejected():
     with pytest.raises(ValueError):
         fit.check_objectives([1, 12])       # objectif inconnu
     fit.check_objectives([1, 4, 9])         # groupe 1 : autorisé
-    fit.check_objectives([1, 4, 8])         # autre lecture possible : autorisée

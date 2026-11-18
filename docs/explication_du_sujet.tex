@@ -570,7 +570,7 @@ Symétrie demandée & Condition & Objectif & Formule\\
 \midrule
 Découplage & $\Bs = 0$ & $\Phi_1$ & $\left(\dfrac{\|\Bs\|}{\|\Q\|}\right)^{2}$\\[2.2ex]
 Orthotropie $R_0$ en membrane & $R_0^{A^*}=0$ & $\Phi_4$ & $\left(\dfrac{R_0^{A^*}}{R_0}\right)^{2}$\\[2.2ex]
-\og Orthotropie $R_1$\fg{} en flexion & $R_1^{D^*}=0$ & $\Phi_9$ & $\left(\dfrac{R_1^{D^*}}{R_1}\right)^{2}$\\[1.5ex]
+Symétrie du carré en flexion & $R_1^{D^*}=0$ & $\Phi_9$ & $\left(\dfrac{R_1^{D^*}}{R_1}\right)^{2}$\\[1.5ex]
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -594,11 +594,10 @@ exactement $n^2 = 36$ fois plus : la slide utilise visiblement $n\,\Bs$ au
 lieu de $\Bs$. On garde la formule du cours et on considère la valeur de la
 slide comme une erreur d'application numérique.
 
-\textbf{2. \og Orthotropie $R_1$\fg} n'existe pas dans le cours. On l'a lue
-comme $R_1^{D^*}=0$, que le cours appelle \og symétrie du carré\fg{}
-($\Phi_9$). L'autre lecture serait une coquille pour l'orthotropie $R_0$
-($\Phi_8$). À confirmer avec le prof : c'est une ligne dans
-\code{config.py}.
+\textbf{2. \og Orthotropie $R_1$\fg} n'existe pas dans le cours : c'est
+une coquille de l'énoncé, confirmée par M. Montemurro. Il faut lire
+\og symétrie du carré $R_1=0$ en flexion\fg, c'est-à-dire $R_1^{D^*}=0$
+($\Phi_9$), ce que fait déjà le code.
 \end{attention}
 
 \begin{attention}[Pièges évités (à citer dans le rapport)]
@@ -858,8 +857,6 @@ entiers), mais très proche.
 \section{Ce qu'il reste à faire pour le rendu}
 % =============================================================================
 \begin{enumerate}
-  \item \textbf{Confirmer $\Phi_9$ ou $\Phi_8$} auprès du prof
-        (\og orthotropie $R_1$\fg).
   \item \textbf{Plusieurs calculs} avec des graines différentes
         (\code{--seed 2}, \code{3}\ldots) et éventuellement le croisement en
         deux points (\code{--crossover two\_point}), pour montrer que le
