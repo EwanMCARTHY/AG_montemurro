@@ -1,65 +1,46 @@
 # AG_montemurro
 
-EVCSP project (ENSAM, 3rd year): a genetic algorithm (GA), written from
-scratch in Python, that searches for the stacking sequence of a
-carbon/epoxy laminate with prescribed elastic symmetries. The symmetries are
-expressed with G. Verchery's polar method.
+Projet EVCSP (ENSAM, 3A) : algorithme génétique écrit en Python (NumPy et
+Matplotlib) qui cherche l'empilement d'un stratifié carbone/époxyde ayant les
+symétries élastiques demandées, exprimées avec la méthode polaire de G. Verchery.
 
-- Project statement: `docs/projet_AG.pdf`
-- Course: `docs/EVCSP_P1.pdf`, `EVCSP_P2.pdf`, `EVCSP_P3.pdf` (the laminate
-  and polar-method slides used here are P2 slides 35-51)
+## Groupe 1
 
-## Group 1
+- 20 plis, orientations dans ]-90°, 90°] au pas de 1°
+- Découplage, orthotropie R0 en membrane, symétrie du carré (R1 = 0) en flexion
+- Fonction de coût : Φ = Φ1 + Φ4 + Φ9 (P2 slides 45-47)
 
-| Item | Value |
+## Fichiers
+
+| Fichier | Rôle |
 |---|---|
-| Elastic symmetries | decoupling, R0-orthotropy in membrane, R1 = 0 in bending |
-| Number of plies | 20 |
-| Cost function | Φ = Φ1 + Φ4 + Φ9 (P2 slides 45-47) |
+| `config.py` | données d'entrée : pli et paramètres de l'AG |
+| `laminate.py` | S, Q, Q(δ), puis A\*, B\*, D\*, C\* (voie cartésienne) |
+| `polar.py` | paramètres polaires, norme, composante L11(θ) |
+| `fitness.py` | fonction de coût Φ1 + Φ4 + Φ9 et fitness |
+| `ga.py` | codage sur 8 bits (codes invalides rejetés), sélection, croisement, mutation, élitisme |
+| `plots.py` | courbe de convergence et diagrammes polaires (PNG) |
+| `main.py` | lance le calcul et écrit les résultats |
 
-Ply: E1 = 161 GPa, E2 = 9 GPa, ν12 = 0.26, G12 = 6.1 GPa, t = 0.125 mm.
-Orientations in ]-90°, 90°] with a 1° step.
+## Utilisation
 
-## Code layout
-
-| File | Role |
-|---|---|
-| `config.py` | all input data: ply, group objectives, GA parameters |
-| `laminate.py` | ply compliance S and stiffness Q, rotation, A, B, D, A\*, B\*, D\*, C (Cartesian route) |
-| `polar.py` | polar parameters T0, T1, R0, R1, Φ0, Φ1, norm, direct polar sums (slides 41-42) |
-| `fitness.py` | partial objectives Φ1-Φ11, cost function, fitness of the statement |
-| `ga.py` | binary-coded GA (8 bits per ply, invalid codes rejected): initial population, roulette selection, crossover, mutation per gene, elitism |
-| `plots.py` | convergence curve and polar diagrams of Q, A\*, B\*, D\* (SVG + PDF + PNG) |
-| `main.py` | runs the optimisation and writes everything to `results/` |
-| `tests/` | checks against the course values (mechanics, cost) and of the GA operators |
-
-## Usage
-
-`python` on this machine may point to Python 2.7 (Amesim). Use Python 3.12:
-
-The virtual environment lives at the repository root (`.venv/`, ignored by
-git); the code lives in this folder. From the repository root:
+Depuis la racine du dépôt (Python 3.12 ; `python` peut pointer vers le Python 2.7 d'Amesim) :
 
 ```bash
 py -3.12 -m venv .venv
-.venv/Scripts/python -m pip install -r "fonctions/requirements.txt"
-cd "fonctions"
-../.venv/Scripts/python -m pytest
-../.venv/Scripts/python main.py
+.venv/Scripts/python -m pip install -r fonctions/requirements.txt
+cd fonctions
+../.venv/Scripts/python main.py --seed 1
 ```
 
-Outputs (in `results/seed_<seed>/`, not versioned):
+Résultats dans `results/seed_<graine>/` (non versionné) : `ga_statistics.csv`,
+`convergence.png`, `polar_diagrams.png`.
 
-- `ga_statistics.csv`: per generation, min / mean / median / max / std of the cost,
-  number of rejected genes and best stacking (`;` separator, UTF-8 with BOM)
-- `convergence.svg/.pdf/.png`, `polar_diagrams.svg/.pdf/.png`
+## Choix
 
-Options: `--crossover two_point`, `--seed 3`.
-
-## Decisions
-
-- Phi1 uses the slide 45 formula with B\* = 2B/h^2. The value printed on P2
-  slide 51 (3.5873e-6) is exactly n^2 = 36 times ours (9.9648e-8): treated as a
-  numerical slip on the slide (see `tests/test_fitness.py`).
-- "R1-orthotropy in bending" is read as R1(D\*) = 0, i.e. Phi9.
-- The 76 codes without an angle are handled by rejection (see `ga.py`).
+- Φ1 suit la formule de la slide 45 avec B\* = 2B/h². La valeur affichée sur
+  la slide 51 vaut exactement n² = 36 fois la nôtre : considérée comme une
+  erreur d'application numérique.
+- « Orthotropie R1 en flexion » : coquille de l'énoncé, confirmée par le prof ;
+  il faut lire R1(D\*) = 0, soit Φ9.
+- Les 76 codes sans angle sont rejetés (voir `ga.py`).
