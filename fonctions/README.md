@@ -42,8 +42,8 @@ git); the code lives in this folder. From the repository root:
 
 ```bash
 py -3.12 -m venv .venv
-.venv/Scripts/python -m pip install -r "Claude Momon's/requirements.txt"
-cd "Claude Momon's"
+.venv/Scripts/python -m pip install -r "fonctions/requirements.txt"
+cd "fonctions"
 ../.venv/Scripts/python -m pytest
 ../.venv/Scripts/python main.py
 ```

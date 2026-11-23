@@ -13,7 +13,7 @@ Enchaîne tout le projet :
    - convergence.svg/.pdf/.png
    - polar_diagrams.svg/.pdf/.png
 
-Utilisation (depuis le dossier "Claude Momon's") :
+Utilisation (depuis le dossier "fonctions") :
     ../.venv/Scripts/python main.py
     ../.venv/Scripts/python main.py --crossover two_point --seed 3
 ===============================================================================
