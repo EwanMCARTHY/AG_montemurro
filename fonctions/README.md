@@ -48,11 +48,10 @@ cd "fonctions"
 ../.venv/Scripts/python main.py
 ```
 
-Outputs (in `results/`, not versioned):
+Outputs (in `results/seed_<seed>/`, not versioned):
 
 - `ga_statistics.csv`: per generation, min / mean / median / max / std of the cost,
   number of rejected genes and best stacking (`;` separator, UTF-8 with BOM)
-- `best_laminate.txt`: best stacking sequence and its polar parameters
 - `convergence.svg/.pdf/.png`, `polar_diagrams.svg/.pdf/.png`
 
 Options: `--crossover two_point`, `--seed 3`.
