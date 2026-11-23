@@ -262,7 +262,7 @@ et quatre autres formules du même genre. C'est lourd : c'est justement pour
 ça que la méthode polaire (section 4) existe.
 
 \subsection{Membrane, flexion et couplage : \texorpdfstring{$\mathbf{A}, \mathbf{B}, \mathbf{D}$}{A, B, D}}
-\emph{Fonction \code{abd\_matrices} (P2 slide 41).}
+\emph{Fonction \code{laminate\_matrices} (P2 slide 41).}
 
 Une plaque peut être sollicitée de deux façons :
 \begin{itemize}
@@ -375,7 +375,7 @@ $z_0 = -h/2$ en bas et $z_n = +h/2$ en haut :
 \end{idee}
 
 \subsection{Matrices homogénéisées}
-\emph{Fonction \code{homogenised\_matrices}.}
+\emph{Fin de la fonction \code{laminate\_matrices}.}
 
 $\mathbf{A}$, $\mathbf{B}$, $\mathbf{D}$ n'ont pas les mêmes unités. On les
 normalise pour les comparer au pli (toutes deviennent des MPa) :
@@ -414,7 +414,7 @@ Par exemple, avec $\mathbf{L} = \Q$, la formule de $T_0$ ci-dessous devient
 $8\,T_0 = Q_{11} - 2Q_{12} + 4Q_{66} + Q_{22}$. Avec $\mathbf{L} = \As$,
 elle donne le $T_0$ de la membrane, noté $T_0^{A^*}$, et ainsi de suite.
 C'est d'ailleurs ce que fait le code : une seule fonction,
-\code{polar\_parameters(L)}, est appelée cinq fois, une fois par matrice.
+\code{polar\_parameters(L)}, est appelée sur chacune des matrices.
 
 Le cours écrit les composantes avec quatre indices ($L_{1111}$, $L_{1122}$,
 $L_{1212}$\ldots) parce qu'une rigidité est, en toute rigueur, un tenseur
@@ -600,19 +600,6 @@ une coquille de l'énoncé, confirmée par M. Montemurro. Il faut lire
 ($\Phi_9$), ce que fait déjà le code.
 \end{attention}
 
-\begin{attention}[Pièges évités (à citer dans le rapport)]
-\begin{itemize}
-  \item Quand $R_0 = 0$ ou $R_1 = 0$, l'angle $\Phi_0$ ou $\Phi_1$
-        \textbf{n'a plus de sens} (une flèche de longueur nulle n'a pas de
-        direction). On ne combine donc jamais un objectif sur les angles
-        ($\Phi_3$, $\Phi_7$) avec un objectif qui annule un $R$ sur le même
-        tenseur ; \code{check\_objectives} refuse ces combinaisons.
-  \item $\Phi_0$ est défini à $\pi/2$ près et $\Phi_1$ à $\pi$ près : pour
-        $\Phi_3$ et $\Phi_7$, l'écart $\Phi_0-\Phi_1$ est ramené dans le bon
-        intervalle avant d'être comparé à $K\pi/4$ (\code{wrap\_angle}).
-\end{itemize}
-Notre groupe n'utilise aucun objectif d'angle : pas de problème pour nous.
-\end{attention}
 
 % =============================================================================
 \section{L'algorithme génétique (AG)}
@@ -656,7 +643,7 @@ angle. Deux solutions :
         interdit, ce gène est \textbf{rejeté} et l'enfant garde le gène de
         son parent. Chaque angle a la même chance ($1/180$). Sur un calcul
         complet, environ 2\,500 gènes sont rejetés en 500 générations
-        (colonne \code{rejected\_genes} du CSV).
+        (mesuré avec la graine 1).
 \end{itemize}
 
 \subsection{Les étapes}
@@ -754,14 +741,13 @@ Ce sont les valeurs de la slide 50 du cours.
 \toprule
 Fichier & Contenu & Cours\\
 \midrule
-\code{config.py} & toutes les données : pli, groupe, objectifs, paramètres AG & énoncé §1, P2 sl.~50\\
+\code{config.py} & les données : pli, nombre de plis, paramètres AG & énoncé §1, P2 sl.~50\\
 \code{laminate.py} & $\Sm$, $\Q$, $\Q(\delta)$, $\mathbf{A},\mathbf{B},\mathbf{D}$, $\As,\Bs,\Ds,\Cm$ & P2 sl.~27, 41\\
-\code{polar.py} & $T_0,T_1,R_0,R_1,\Phi_0,\Phi_1$, norme, sommes polaires directes & P2 sl.~35--42, 45\\
-\code{fitness.py} & les 11 objectifs partiels, le coût $\Phi$, la fitness & P2 sl.~44--47\\
+\code{polar.py} & $T_0,T_1,R_0,R_1,\Phi_0,\Phi_1$, norme, $L_{11}(\theta)$ & P2 sl.~35--37, 45\\
+\code{fitness.py} & le coût $\Phi = \Phi_1 + \Phi_4 + \Phi_9$, la fitness & P2 sl.~44--47\\
 \code{ga.py} & codage, population, roulette, croisement, mutation, rejet, élitisme & P1 sl.~48, P2 sl.~50\\
-\code{plots.py} & courbe de convergence, diagrammes polaires & énoncé §3\\
-\code{main.py} & enchaîne tout et écrit \code{results/} & ---\\
-\code{tests/} & vérifications automatiques & P2 sl.~49, 51\\
+\code{plots.py} & courbe de convergence, diagrammes polaires (PNG) & énoncé §3\\
+\code{main.py} & enchaîne tout et écrit \code{results/seed\_<graine>/} & ---\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -780,16 +766,14 @@ Fichier & Contenu & Cours\\
   \node[f] (cost) at (2,-2.4)  {fitness.cost};
   \node[f] (lam)  at (3,-3.2)  {laminate.laminate\_matrices};
   \node[f] (pol)  at (3,-4.0)  {polar.polar\_parameters};
-  \node[f] (obj)  at (3,-4.8)  {fitness.partial\_objectives};
-  \node[f] (out)  at (1,-5.6)  {main: CSV, best\_laminate.txt, plots};
+  \node[f] (out)  at (1,-4.8)  {main: CSV, plots};
 
   \node[n] at (8.6,-0.8) {$\Sm$, $\Q$ du pli};
   \node[n] at (8.6,-1.6) {boucle sur les générations};
   \node[n] at (8.6,-2.4) {pour chaque individu};
   \node[n] at (8.6,-3.2) {$\As,\Bs,\Ds,\Cm$};
-  \node[n] at (8.6,-4.0) {$T_0,T_1,R_0,R_1,\Phi_0,\Phi_1$};
-  \node[n] at (8.6,-4.8) {$\Phi_1,\dots,\Phi_{11}$ (on garde 1, 4, 9)};
-  \node[n] at (8.6,-5.6) {à la fin du calcul};
+  \node[n] at (8.6,-4.0) {$T_0,\dots,\Phi_1$, puis $\Phi_1 + \Phi_4 + \Phi_9$};
+  \node[n] at (8.6,-4.8) {à la fin du calcul};
 
   \draw[->] ([xshift=4mm]main.south west) |- (ply.west);
   \draw[->] ([xshift=4mm]main.south west) |- (ga.west);
@@ -797,12 +781,12 @@ Fichier & Contenu & Cours\\
   \draw[->] ([xshift=4mm]ga.south west)   |- (cost.west);
   \draw[->] ([xshift=4mm]cost.south west) |- (lam.west);
   \draw[->] ([xshift=4mm]cost.south west) |- (pol.west);
-  \draw[->] ([xshift=4mm]cost.south west) |- (obj.west);
 \end{tikzpicture}
 \end{center}
 
-\paragraph{Comment on sait que la mécanique est juste.} Les tests
-(\code{tests/test\_mechanics.py}) comparent le code aux valeurs du cours :
+\paragraph{Comment on sait que la mécanique est juste.} Pendant le
+développement, le code a été comparé aux valeurs du cours (ces tests ne sont
+plus dans la version finale, pour garder le code minimal) :
 \begin{itemize}
   \item pli T300/5208 (slide 49) : $T_0 = 26\,880$, $T_1 = 24\,744$,
         $R_0 = 19\,710$, $R_1 = 21\,433$ MPa : \textbf{retrouvés} ;
@@ -813,11 +797,9 @@ Fichier & Contenu & Cours\\
         (sommes de flèches) donnent les mêmes nombres sur des empilements
         tirés au hasard.
 \end{itemize}
-Pour lancer les tests puis le calcul (depuis le dossier
-\code{fonctions}) :
+Pour lancer le calcul (depuis le dossier \code{fonctions}) :
 \begin{center}
-\code{../.venv/Scripts/python -m pytest}\qquad
-\code{../.venv/Scripts/python main.py}
+\code{../.venv/Scripts/python main.py --seed 1}
 \end{center}
 
 % =============================================================================
@@ -837,30 +819,29 @@ bon \textbf{pseudo-optimum} : pas exactement 0 (impossible avec des angles
 entiers), mais très proche.
 
 \begin{itemize}
-  \item \code{convergence.*} : en haut, le meilleur coût (en escalier, il ne
+  \item \code{convergence.png} : en haut, le meilleur coût (en escalier, il ne
         remonte jamais grâce à l'élitisme), la moyenne et le pire, en échelle
         logarithmique ; en bas, l'écart-type : grand au début (population
         variée), petit à la fin (population regroupée).
-  \item \code{polar\_diagrams.*} : la rigidité dans chaque direction. Le pli
+  \item \code{polar\_diagrams.png} : la rigidité dans chaque direction. Le pli
         $\Q$ fait un \og 8\fg{} allongé à $0^\circ$ ; $\As$ a la forme de
         cacahuète de l'orthotropie $R_0$ ; $\Ds$ ressemble à un carré arrondi
         ; $\Bs$ est près de 100 fois plus petit que $\As$ (il a sa propre
         échelle, en MPa).
   \item \code{ga\_statistics.csv} : une ligne par génération (min, moyenne,
-        médiane, max, écart-type, gènes rejetés, meilleur empilement).
-        S'ouvre directement dans Excel.
-  \item \code{best\_laminate.txt} : l'empilement, les $\Phi_i$, tous les
-        paramètres polaires et les matrices.
+        max, écart-type du coût). S'ouvre directement dans Excel.
 \end{itemize}
+Les fichiers sont rangés dans \code{results/seed\_<graine>/}.
 
 % =============================================================================
 \section{Ce qu'il reste à faire pour le rendu}
 % =============================================================================
 \begin{enumerate}
-  \item \textbf{Plusieurs calculs} avec des graines différentes
-        (\code{--seed 2}, \code{3}\ldots) et éventuellement le croisement en
-        deux points (\code{--crossover two\_point}), pour montrer que le
-        résultat est robuste.
+  \item \textbf{Plusieurs graines} (fait) : graine 1, $\Phi = 4{,}1\times10^{-5}$ ;
+        graine 2, $\Phi = 9{,}8\times10^{-5}$ ; graine 3,
+        $\Phi = 1{,}2\times10^{-5}$. Les empilements trouvés sont très
+        différents mais les coûts restent du même ordre : à commenter dans
+        l'étude de sensibilité.
   \item \textbf{Le rapport} (énoncé §3) : théorie (sections 2 à 5 de ce
         document), méthodologie (sections 6 et 7, choix du rejet, décision
         sur $\Phi_1$), résultats (section 8 et figures).
